@@ -118,8 +118,10 @@ test("mcp.json declares exactly one stdio server with only spec-allowed fields (
 test("plugin discovery artifacts: skill is present and portable (§4/§42)", () => {
   const skillPath = join(repoRoot, "skills", "browser-use", "SKILL.md");
   assert.ok(existsSync(skillPath), "skills/browser-use/SKILL.md must exist");
-  const text = readFileSync(skillPath, "utf8");
-  const frontmatter = text.match(/^---\n([\s\S]*?)\n---\n/);
+  // Tolerate CRLF checkouts (Windows core.autocrlf) — the file on disk may not
+  // carry the LF line endings it has in the repository.
+  const text = readFileSync(skillPath, "utf8").replace(/\r\n/g, "\n");
+  const frontmatter = text.match(/^---\n([\s\S]*?)\n---(?:\n|$)/);
   assert.ok(frontmatter, "SKILL.md has YAML frontmatter");
   assert.match(frontmatter[1], /^name:\s*browser-use\s*$/m, "skill name matches its directory");
   assert.match(frontmatter[1], /^description:\s*\S/m, "skill has a description");

@@ -16,7 +16,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chromeProcessRunning, tcpPortOpen } from "../helpers/chromeProbe.mjs";
+import { activeDevToolsEndpoint, chromeProcessRunning, remoteDebuggingUserEnabled } from "../helpers/chromeProbe.mjs";
 import { RUNTIME_GATES, requireRuntimeOrSkip, startRuntime } from "../helpers/runtime.mjs";
 
 const SCENARIO = RUNTIME_GATES.qualificationScenario;
@@ -90,7 +90,8 @@ print("cleanup:", closed)
       "a task-tab close helper must exist and succeed",
     );
 
-    const after = urlsOf(cleanup);
+    // Dedicated post-cleanup listing; the cleanup output itself carries no tabs.
+    const after = urlsOf(await exec("print(repr(list_tabs()))"));
     for (const url of before) {
       // In-memory comparison; the URL itself is never printed (R8).
       assert.ok(after.includes(url), "a pre-existing tab disappeared during the agent task");
@@ -142,7 +143,20 @@ for name in ("close_tab", "close_current_tab"):
 
 runScenario("remote-debugging-disabled: runtime reaches a diagnosable state, bounded", async () => {
   assert.ok(chromeProcessRunning(), "precondition: Chrome must be running");
-  assert.equal(await tcpPortOpen(9222), false, "precondition: the CDP HTTP endpoint must not already be open");
+  // Precondition mirrors what Browser Use itself checks: the Local State flag
+  // and a live DevToolsActivePort — a closed 9222 alone proves nothing (the
+  // endpoint may live on a dynamic port).
+  const userEnabled = remoteDebuggingUserEnabled();
+  assert.notEqual(
+    userEnabled,
+    true,
+    "precondition: Local State devtools.remote_debugging.user-enabled must be off (it is on or unreadable)",
+  );
+  assert.equal(
+    await activeDevToolsEndpoint(),
+    null,
+    "precondition: no live DevToolsActivePort endpoint in the default profile",
+  );
   const runtime = await startRuntime();
   let taskTabCreated = false;
   try {

@@ -21,6 +21,26 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 2 (post-review)
+
+- Windows CI: manifest frontmatter parsing tolerates CRLF checkouts; `.gitattributes`
+  normalizes the repo to LF.
+- Browser qualification workflow installs dev dependencies (`npm ci`) before
+  the full suite.
+- Fixed the existing-browser scenario comparing against a tab-less cleanup
+  output; it now lists tabs in a dedicated post-cleanup call.
+- Remote-debugging precondition now follows the harness's own signals
+  (Local State `devtools.remote_debugging.user-enabled` + live
+  DevToolsActivePort) instead of assuming port 9222.
+- Reference host: a timeout/transport failure now poisons the transport (MCP
+  process stopped immediately, further calls rejected) with explicit
+  `task.recover()` on a fresh process (§59); every `browser_exec` is treated
+  as side-effect-possible — agents cannot declare calls read-only.
+- `prepareExecutionContext` also quarantines `agent-workspace/.env` (the
+  harness auto-loads it into the next task's environment).
+- Skill/README state the browser scope honestly: Browser Use drives local
+  Chromium-family browsers, V1 qualification covers Chrome/Chromium only.
+
 ### Release hardening (post-review)
 
 - Publisher/license/repository finalized: WuLianpu, MIT, github.com/wulianpu/browser-use.

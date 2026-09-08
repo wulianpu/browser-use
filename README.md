@@ -35,6 +35,10 @@ Browser Harness → CDP → local Chrome / Chromium
 Runtime core is exactly three files: `plugin.json`, `mcp.json`, `skills/browser-use/SKILL.md`.
 `upstream.lock.json` is a provenance/development artifact — it does not define runtime semantics.
 
+**Browser scope:** Browser Use can drive local Chromium-family browsers (its discovery also covers
+Edge/Brave-class launchers). This thin adapter does not constrain that capability, but V1
+qualification covers **Chrome/Chromium only**; other Chromium-family browsers are unqualified here.
+
 ## Ownership model (do not violate)
 
 | Layer | Owns |

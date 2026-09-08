@@ -238,18 +238,31 @@ export function decideAfterFailure({ sideEffectPossible, failure }) {
   };
 }
 
-// §41 quarantine persistent self-modifying helper state before a new independent
+// §41 quarantine persistent self-modifying state before a new independent
 // execution context starts. Browser Harness runtime/config state is untouched.
+//
+// Quarantined files (both auto-loaded by the harness on import):
+//   agent-workspace/agent_helpers.py — task-authored executable helper code
+//   agent-workspace/.env             — task-authored environment overlay; the
+//       harness os.environ.setdefault()s it, so a leftover file can redirect
+//       the NEXT task's harness connection (BU_NAME/BU_CDP_URL/BU_CDP_WS/...)
+//
+// Hosts may go further and give every task a clean agent-workspace; harness
+// state that legitimately persists belongs under BH_HOME instead.
 export async function prepareExecutionContext(pluginData) {
   const workspace = join(pluginData, "agent-workspace");
   await mkdir(workspace, { recursive: true });
-  const helperPath = join(workspace, "agent_helpers.py");
-  let quarantined = null;
-  if (existsSync(helperPath)) {
-    const quarantineDir = join(pluginData, "quarantine");
-    await mkdir(quarantineDir, { recursive: true });
-    quarantined = join(quarantineDir, `${Date.now()}-${process.pid}-agent_helpers.py`);
-    await rename(helperPath, quarantined);
+  const quarantineTargets = ["agent_helpers.py", ".env"];
+  const quarantined = [];
+  for (const filename of quarantineTargets) {
+    const filePath = join(workspace, filename);
+    if (existsSync(filePath)) {
+      const quarantineDir = join(pluginData, "quarantine");
+      await mkdir(quarantineDir, { recursive: true });
+      const destination = join(quarantineDir, `${Date.now()}-${process.pid}-${filename}`);
+      await rename(filePath, destination);
+      quarantined.push(destination);
+    }
   }
   return { workspace, quarantined };
 }

@@ -1,0 +1,4 @@
+# Normalize the repository to LF so line-ending-sensitive tooling (frontmatter
+# parsing, TAP output) behaves identically on every platform. Tests additionally
+# tolerate CRLF in case a checkout overrides this.
+* text=auto eol=lf

@@ -18,7 +18,8 @@ function makeFakeTransport({ respond } = {}) {
       return respond(name, args, timeoutMs, transport.callLog.length);
     },
     async stop() {
-      transport.stopped += 1;
+      // Idempotent, like the real McpStdioClient (a stopped process stays stopped).
+      if (transport.stopped === 0) transport.stopped += 1;
     },
   };
   return transport;
@@ -52,10 +53,10 @@ test("oversized code is rejected before dispatch with INPUT_TOO_LARGE (§56)", a
   assert.equal(transport.callLog.length, 0);
 });
 
-test("timeout on a possibly-mutating exec → OUTCOME_UNKNOWN, exactly one dispatch, never replayed (§58)", async () => {
+test("timeout poisons the transport: unknown outcome, process stopped, no replay, explicit recovery (§58-§60)", async () => {
   const transport = makeFakeTransport({
     respond: (name, args, timeoutMs) => new Promise((resolve, reject) => {
-      // Simulate the MCP transport timing out after a click was already sent.
+      // Simulate the MCP transport timing out while the exec keeps running.
       setTimeout(() => reject(new Error(`MCP request "tools/call" timed out after ${timeoutMs} ms`)), 10);
     }),
   });
@@ -64,15 +65,68 @@ test("timeout on a possibly-mutating exec → OUTCOME_UNKNOWN, exactly one dispa
     timeouts: { browser_exec: 5, browser_screenshot: 30_000 },
   });
 
-  const result = await hostFast.withTask("t1", async (task) =>
-    task.exec("click_at_xy(10, 10)", { sideEffectPossible: true }),
-  );
-  assert.equal(result.ok, false);
-  assert.equal(result.code, "BROWSER_USE_OUTCOME_UNKNOWN");
+  let recovered;
+  const result = await hostFast.withTask("t1", async (task) => {
+    const first = await task.exec("click_at_xy(10, 10)"); // read-only or not: treated as mutating
+    assert.equal(first.ok, false);
+    assert.equal(first.code, "BROWSER_USE_OUTCOME_UNKNOWN");
+    assert.equal(first.outcome, "unknown");
+    assert.equal(first.replay, false);
+    assert.ok(first.nextStep.join(" ").includes("inspect"));
+    assert.equal(transport.callLog.length, 1, "the wrapper never auto-resubmits the same code");
+    assert.equal(transport.stopped, 1, "the MCP process is stopped immediately (no zombie browser_exec)");
+
+    // The poisoned transport rejects further calls — including screenshots.
+    await assert.rejects(task.exec("print(1)"), (error) => error.code === "BROWSER_USE_RUNTIME_CRASHED");
+    await assert.rejects(task.screenshot({}), (error) => error.code === "BROWSER_USE_RUNTIME_CRASHED");
+
+    // §59 recovery: explicit fresh process, then inspect state on it.
+    await task.recover();
+    recovered = task.recycles;
+    return first;
+  });
   assert.equal(result.outcome, "unknown");
-  assert.equal(result.replay, false);
-  assert.ok(result.nextStep.join(" ").includes("inspect"));
-  assert.equal(transport.callLog.length, 1, "the wrapper never auto-resubmits the same code");
+  assert.equal(recovered, 1);
+});
+
+test("recovery inspection runs on a fresh transport, not the poisoned one (§59)", async () => {
+  const transports = [];
+  let failNext = true;
+  const factory = async (taskId) => {
+    const transport = makeFakeTransport({
+      respond: () => {
+        if (failNext) {
+          failNext = false;
+          return new Promise((resolve, reject) =>
+            setTimeout(() => reject(new Error('MCP request "tools/call" timed out after 5 ms')), 5),
+          );
+        }
+        return { content: [{ type: "text", text: "state: form submitted" }] };
+      },
+    });
+    transports.push({ taskId, transport });
+    return transport;
+  };
+  const host = createReferenceHostRuntime({
+    transportFactory: factory,
+    timeouts: { browser_exec: 20, browser_screenshot: 30_000 },
+  });
+
+  const summary = await host.withTask("t1", async (task) => {
+    const click = await task.exec("click_at_xy(1, 1)");
+    if (!click.ok) {
+      await task.recover(); // fresh MCP process
+      const inspection = await task.exec("print(state)");
+      return { click, inspection };
+    }
+    return { click, inspection: null };
+  });
+
+  assert.equal(summary.click.outcome, "unknown");
+  assert.ok(summary.inspection.text.includes("form submitted"), "page-state inspection succeeds on the fresh process");
+  assert.equal(transports.length, 2, "poisoned process replaced by a new one");
+  assert.equal(transports[0].transport.stopped, 1);
+  assert.equal(transports[1].transport.stopped, 1, "recovered process also recycled at task end");
 });
 
 test("oversized textual output is truncated once, valid UTF-8, within budget (§57/§89)", async () => {

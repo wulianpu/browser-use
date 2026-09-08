@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "browser-use",
+  "version": "1.0.0",
+  "description": "Agent Plugins adapter for the official Browser Use CLI browser runtime.",
+  "author": {
+    "name": "<ACTUAL_PLUGIN_PUBLISHER>"
+  },
+  "license": "<PLUGIN_LICENSE>",
+  "keywords": [
+    "browser",
+    "browser-use",
+    "automation",
+    "cdp",
+    "mcp"
+  ]
+}

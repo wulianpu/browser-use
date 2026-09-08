@@ -1,0 +1,45 @@
+{
+  "capturedFrom": "uvx --python 3.12 browser-use@0.13.10 --cli-mcp",
+  "serverInfo": {
+    "name": "browser-use",
+    "version": "0.13.10"
+  },
+  "protocolVersion": "2025-03-26",
+  "tools": [
+    {
+      "name": "browser_exec",
+      "description": "Execute Python in the browser-harness session. Helpers like new_tab(url), goto_url(url), page_info(), click_at_xy(x, y), type_text(text), js(code), cdp(method, ...), wait_for_load(), list_tabs() are pre-imported. The namespace persists across calls. Returns whatever the code prints. First navigation should be new_tab(url).",
+      "inputSchema": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Python code to execute"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "browser_screenshot",
+      "description": "Capture the current page and return it as an image. Prefer this over capture_screenshot() in browser_exec.",
+      "inputSchema": {
+        "properties": {
+          "full": {
+            "type": "boolean",
+            "description": "Capture beyond the viewport (full page)",
+            "default": false
+          },
+          "max_dim": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Downscale so no side exceeds this many pixels (e.g. 1800 for 2x displays)"
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

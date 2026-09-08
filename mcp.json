@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "browser-use": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--python",
+        "3.12",
+        "browser-use@0.13.10",
+        "--cli-mcp"
+      ],
+      "env": {
+        "BH_HOME": "${PLUGIN_DATA}/browser-harness",
+        "BH_AGENT_WORKSPACE": "${PLUGIN_DATA}/agent-workspace",
+        "BH_TAB_MARKER": "0",
+        "BH_DOMAIN_SKILLS": "0",
+        "BH_RECORD": "0",
+        "BH_TELEMETRY": "false",
+        "BROWSER_HARNESS_TELEMETRY": "false",
+        "ANONYMIZED_TELEMETRY": "false"
+      },
+      "cwd": "${PLUGIN_DATA}"
+    }
+  }
+}

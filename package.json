@@ -1,0 +1,16 @@
+{
+  "name": "browser-use-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Development/test tooling for the browser-use Agent Plugins v1 adapter. The plugin itself is plugin.json + mcp.json + SKILL.md.",
+  "engines": {
+    "node": ">=16.17"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:static": "node --test",
+    "verify:upstream": "node scripts/verify-upstream.mjs",
+    "verify:contract": "node scripts/verify-runtime-contract.mjs"
+  }
+}

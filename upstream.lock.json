@@ -1,0 +1,23 @@
+{
+  "agentPlugins": {
+    "specVersion": "1.0.0"
+  },
+  "browserUse": {
+    "package": "browser-use",
+    "version": "0.13.10",
+    "pyprojectBlobSha": "5c79c94fef1d1ee831ce85333975cc4288e2b126"
+  },
+  "browserHarness": {
+    "version": "0.1.13"
+  },
+  "officialPlugin": {
+    "repository": "browser-use/plugins",
+    "path": "browser-use/.mcp.json",
+    "blobSha": "fcaab79089bb4c3a54766e519454d029befc95bc"
+  },
+  "officialSkill": {
+    "repository": "browser-use/browser-use",
+    "path": "skills/browser-use/SKILL.md",
+    "blobSha": "d47beef3bcdf7ea42275442bb1fdaaf87f9185ed"
+  }
+}

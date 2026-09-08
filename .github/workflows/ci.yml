@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static-tests:
+    name: static suite (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run static test suite (manifest, pins, security policy, budgets)
+        env:
+          BROWSER_USE_SKIP_RUNTIME: "1"
+        run: node --test
+
+  runtime-contract:
+    name: live MCP contract (real uvx runtime, no Chrome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Warm the pinned runtime (first resolution needs network)
+        run: uvx --python 3.12 browser-use@0.13.10 --help
+      - name: Contract gate vs. snapshot (§70)
+        run: node scripts/verify-runtime-contract.mjs
+      - name: MCP integration tests (initialize / tools/list / shutdown — §80)
+        run: node --test tests/mcp/contract.test.mjs
+
+  upstream-drift:
+    name: upstream drift (review hint, non-blocking — §71)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/verify-upstream.mjs --json
+
+  browser-qualification:
+    name: browser qualification (manual, needs real Chrome — §81-§84)
+    runs-on: [self-hosted, chrome]
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Full suite including browser_exec-driven tests
+        env:
+          BROWSER_USE_BROWSER_TESTS: "1"
+          BROWSER_USE_QUALIFICATION: "1"
+        run: node --test

@@ -1,9 +1,11 @@
 # Third-Party Notices
 
-This plugin distributes **no upstream code**. It only declares the official launch line
-(`uvx --python 3.12 browser-use@0.13.10 --cli-mcp`); the runtime and its dependencies are
-resolved by `uvx` from the package registry at install/first-use time. The identities below
-are the reviewed runtime baseline recorded in `upstream.lock.json` (spec §10/§15/§95).
+This plugin distributes **no upstream Browser Use runtime code**: the runtime and its
+dependencies are resolved by `uvx` from the package registry at install/first-use time. It does
+include an **adapted copy of the upstream Browser Use Skill** (`skills/browser-use/SKILL.md`),
+synced from the upstream repository under its MIT license with the adaptation classes documented
+in the README. The identities below are the reviewed runtime baseline recorded in
+`upstream.lock.json` (spec §10/§15/§95).
 
 | Component | Version at pin | License (as declared upstream) | Source |
 | --- | --- | --- | --- |
@@ -22,7 +24,9 @@ Notes:
   `ANONYMIZED_TELEMETRY=false`.
 - The skill content in `skills/browser-use/SKILL.md` is a reviewed, adapted sync of the upstream
   `browser-use/browser-use` skill (blob SHA `d47beef3bcdf7ea42275442bb1fdaaf87f9185ed`), used
-  under its MIT license; adaptation classes are limited to portable frontmatter, host security
-  policy, and V1 product scope.
+  under its MIT license (also declared in the skill's frontmatter); adaptation classes are
+  limited to portable frontmatter, host security policy, and V1 product scope.
+- The vendored Agent Plugins schemas under `tests/manifest/schemas/` are pristine copies of the
+  published schema files, used for validation only.
 - Before publishing, re-verify each license against the actual pinned artifacts as part of the
   upstream upgrade review (spec §72/§95).

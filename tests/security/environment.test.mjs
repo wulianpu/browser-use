@@ -27,13 +27,14 @@ test("no mutable runtime state points into PLUGIN_ROOT (§18: package stays immu
   assert.ok(!String(server.cwd).includes("${PLUGIN_ROOT}"), "cwd must live under PLUGIN_DATA");
 });
 
-test("telemetry, recordings, domain skills, tab marker are disabled by default (§19-§22/§78)", () => {
+test("telemetry, recordings, domain skills, tab marker, cloud sync are disabled by default (§19-§22/§64/§78)", () => {
   const env = loadMcpConfig().mcpServers["browser-use"].env;
   assert.deepEqual(
     {
       BH_TELEMETRY: env.BH_TELEMETRY,
       BROWSER_HARNESS_TELEMETRY: env.BROWSER_HARNESS_TELEMETRY,
       ANONYMIZED_TELEMETRY: env.ANONYMIZED_TELEMETRY,
+      BROWSER_USE_CLOUD_SYNC: env.BROWSER_USE_CLOUD_SYNC,
       BH_RECORD: env.BH_RECORD,
       BH_DOMAIN_SKILLS: env.BH_DOMAIN_SKILLS,
       BH_TAB_MARKER: env.BH_TAB_MARKER,

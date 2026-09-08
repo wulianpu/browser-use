@@ -6,7 +6,7 @@ Browser Use, does not implement CDP, and does not provide a second browser agent
 the official runtime and the usage guidance around it.
 
 > **Runtime upstream:** [Browser Use](https://github.com/browser-use/browser-use) (pinned `0.13.10`, Python 3.12)
-> **Portable Agent Plugin adapter maintainer:** `<ACTUAL_PLUGIN_PUBLISHER>` — fill before publishing (see [Release checklist](#release-checklist))
+> **Portable Agent Plugin adapter maintainer:** WuLianpu — <https://github.com/wulianpu/browser-use>
 >
 > This plugin is **not** published by the Browser Use team. It is an independent adapter of the
 > official `.mcp.json` launch line (`uvx --python 3.12 browser-use@<pin> --cli-mcp`).
@@ -50,7 +50,11 @@ Any contribution that adds a CDP layer, browser driver, tab manager, provider ab
 ## What the Agent Host must provide
 
 The plugin intentionally stays thin; the following are **host obligations**, with an executable
-reference implementation in [`tests/helpers/hostPolicy.mjs`](tests/helpers/hostPolicy.mjs):
+reference implementation in [`tests/helpers/hostPolicy.mjs`](tests/helpers/hostPolicy.mjs)
+(individual policies) and [`tests/helpers/referenceHostRuntime.mjs`](tests/helpers/referenceHostRuntime.mjs)
+(the composed wrapper — permission → input bound → single-flight → timeout → output bound →
+failure classification → task recycle — exercised end-to-end by
+[`tests/security/reference-host.test.mjs`](tests/security/reference-host.test.mjs)):
 
 - **Authorization (§25):** `browser_screenshot` → `browser.observe`; `browser_exec` →
   `browser.interact` + `browser.debug` + `local.code-execution`. Without
@@ -75,6 +79,12 @@ reference implementation in [`tests/helpers/hostPolicy.mjs`](tests/helpers/hostP
   Python tracebacks as the business API.
 - **Uninstall:** remove only `PLUGIN_ROOT` and `PLUGIN_DATA`. The user's Chrome profile is never touched.
 
+> **Integration release gate (P0):** the reference policy in this repo proves the contract is
+> implementable and self-consistent, but it is *test code*. Before shipping a product build, run
+> the same contract suites against the **real Host**: environment sanitization, `local.code-execution`
+> authorization, task-boundary recycle, and output bounds must be verified in the actual host
+> process, not only here. "Plugin repo PASS" ≠ "Product integration PASS".
+
 ## Security model
 
 - `browser_exec` **is local code execution** (it ultimately runs `exec(code, ns)` in a local Python
@@ -86,15 +96,21 @@ reference implementation in [`tests/helpers/hostPolicy.mjs`](tests/helpers/hostP
 - Telemetry is disabled by default (`BH_TELEMETRY=false`, `BROWSER_HARNESS_TELEMETRY=false`,
   `ANONYMIZED_TELEMETRY=false`), recordings disabled (`BH_RECORD=0`), domain skills disabled
   (`BH_DOMAIN_SKILLS=0`), tab-title marker disabled (`BH_TAB_MARKER=0`).
-- Browser Use Cloud is out of scope: no `BROWSER_USE_API_KEY`, no remote daemons (§64).
+- Browser Use Cloud is out of scope: no `BROWSER_USE_API_KEY`, no remote daemons; `BROWSER_USE_CLOUD_SYNC=false`
+  is pinned explicitly so local-only scope (§64) never depends on upstream's current telemetry default (§64).
 - macOS `mac-approve` is not an agent tool; route it through product diagnostics (§63).
 
 ## Supply chain
 
 The runtime resolves via `uvx` from the package registry on first use (network required; slow
 first start is expected). The pin is exact — `browser-use@0.13.10` — so one PluginRevision always
-maps to one runtime. `@latest` is forbidden and CI-enforced. Runtime upgrades require a **new
-plugin revision** with reviewed `upstream.lock.json` + skill sync + contract re-qualification (§72).
+maps to **the same top-level Browser Use version**. It is *not* a byte-level lock of the full
+runtime environment: the uvx version, resolver behavior, and transitive dependency set are not
+hash-pinned, so `same PluginRevision → byte-identical environment` is **not** guaranteed. For
+enterprise-grade reproducibility (pinned uv + locked runtime distributions/hashes + pre-qualified
+cache), see the supply-chain upgrade path in the frozen spec (§66) — deliberately out of scope for
+V1. `@latest` is forbidden and CI-enforced. Runtime upgrades require a **new plugin revision**
+with reviewed `upstream.lock.json` + skill sync + contract re-qualification (§72).
 
 Upstream provenance currently locked in [`upstream.lock.json`](upstream.lock.json):
 
@@ -124,27 +140,36 @@ README.md  CHANGELOG.md  LICENSE  THIRD_PARTY_NOTICES.md
 ## Development
 
 Requires Node ≥ 16.17 (`node --test`), `uv`/`uvx` for runtime tests, and network access for the
-first runtime resolution.
+first runtime resolution. Install dev dependencies first (`npm ci`) — the manifest suite runs real
+JSON Schema validation with ajv against the vendored official schemas.
 
 ```bash
-npm test                        # full suite (runtime tests run for real — §80)
-BROWSER_USE_SKIP_RUNTIME=1 npm test   # static-only (manifest, pins, security policy, budget)
+npm ci                                # dev dependencies (ajv)
+npm test                              # full suite; runtime tests run for real (§80)
+BROWSER_USE_SKIP_RUNTIME=1 npm test   # static-only (manifest schemas, pins, security policy, budget)
 node scripts/verify-runtime-contract.mjs      # live MCP contract vs. snapshot (§70)
-node scripts/verify-upstream.mjs             # upstream drift + pin consistency (§71)
+node scripts/verify-upstream.mjs             # upstream drift, harness pin, schema drift (§71)
 node scripts/verify-runtime-contract.mjs --update   # only during a reviewed upgrade
 ```
 
-Test gating:
+Test gating — runtime tests never skip implicitly: if `uvx` is missing without an explicit skip,
+the suite **fails** (a green run must mean the real runtime was exercised):
 
 | Env var | Effect |
 | --- | --- |
-| `BROWSER_USE_SKIP_RUNTIME=1` | skip everything that spawns the runtime |
+| `BROWSER_USE_SKIP_RUNTIME=1` | explicit skip of everything that spawns the runtime |
+| (default) | runtime tests must run for real; missing `uvx` → FAIL |
 | `BROWSER_USE_BROWSER_TESTS=1` | also run tests that call `browser_exec` (may start the harness daemon and attach/launch Chrome — §35) |
-| `BROWSER_USE_QUALIFICATION=1` | also run interactive qualification against the user's real Chrome (§82-§84) |
+| `BROWSER_USE_QUALIFICATION=1` | also run interactive qualification against a real Chrome (§82-§84) |
+| `BROWSER_USE_QUALIFICATION_SCENARIO` | `existing-browser` \| `cold-start` \| `remote-debugging-disabled`; each scenario asserts its own preconditions |
 
-CI (`.github/workflows/ci.yml`): static suite on Ubuntu + Windows; live contract test with uv
-installed; upstream drift check as a non-blocking review hint; browser qualification as a manual
-`workflow_dispatch` job for a Chrome-equipped runner.
+Qualification scenarios are privacy-safe in their logs: real tab URLs are compared in memory and
+never written into assertion messages or CI output (§73).
+
+CI (`.github/workflows/ci.yml`): read-only token, Actions pinned to full commit SHAs, no persisted
+credentials; static suite on Ubuntu + Windows; live contract test with uv installed; upstream drift
+as a non-blocking review hint; manual qualification job with a scenario input, intended for a
+dedicated ephemeral Chrome runner (it executes registry-resolved Python code and `browser_exec`).
 
 ## Upstream upgrade flow (§72)
 
@@ -158,14 +183,19 @@ installed; upstream drift check as a non-blocking review hint; browser qualifica
 
 Before publishing `browser-use@1.0.0`:
 
-- [ ] Replace `<ACTUAL_PLUGIN_PUBLISHER>` in `plugin.json` / `LICENSE` with the real publisher identity (never the Browser Use team — §8).
-- [ ] Replace `<PLUGIN_LICENSE>` in `plugin.json` and finalize `LICENSE` accordingly.
-- [ ] Add `homepage`/`repository` only when real URLs exist (never fabricated — §7).
+- [x] Publisher/license decided: `author.name` = WuLianpu, `license` = MIT, `repository` = <https://github.com/wulianpu/browser-use>.
+- [x] Real JSON Schema validation in CI (ajv against the vendored official Agent Plugins 1.0.0 schemas).
 - [ ] `npm test`, `node scripts/verify-runtime-contract.mjs`, `node scripts/verify-upstream.mjs` all green.
-- [ ] Browser qualification matrix run on the target Chrome/OS combinations.
+- [ ] Browser qualification matrix: run each scenario (`existing-browser`, `cold-start`,
+      `remote-debugging-disabled`) on the target Chrome/OS combinations, each on a prepared
+      machine matching the scenario's preconditions; macOS mac-approve flow qualified via
+      product diagnostics.
+- [ ] **Real-Host integration proof (P0):** the host-security contract (env sanitization,
+      `local.code-execution` authorization, task-boundary recycle, output bounds) demonstrated
+      in the actual Agent Host, not only in this repo's reference tests.
 - [ ] Review gates in the frozen spec (`Browser Use Agent Plugin.md` §90-§96) all checked.
 
 ## License
 
-`<PLUGIN_LICENSE>` — see [LICENSE](LICENSE). Upstream runtime licenses: MIT (Browser Use,
+MIT — see [LICENSE](LICENSE). Upstream runtime licenses: MIT (Browser Use,
 Browser Harness) — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

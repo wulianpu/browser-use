@@ -54,24 +54,30 @@ export function uvxAvailable() {
 }
 
 // Runtime gating policy:
-//   BROWSER_USE_SKIP_RUNTIME=1      → skip runtime tests (local dev without uvx)
-//   default                          → runtime tests must run for real (§80: no mock-only MCP tests)
-//   BROWSER_USE_BROWSER_TESTS=1     → opt in to tests that drive a real Chrome (§35)
+//   BROWSER_USE_SKIP_RUNTIME=1      → explicit skip of runtime tests (local dev without uvx)
+//   default                          → runtime tests must run for real; missing uvx FAILS the
+//                                      suite (§80: no mock-only MCP tests, no implicit skip)
+//   BROWSER_USE_BROWSER_TESTS=1     → opt in to tests that call browser_exec / drive real Chrome (§35)
 //   BROWSER_USE_QUALIFICATION=1     → opt in to interactive qualification scenarios
+//   BROWSER_USE_QUALIFICATION_SCENARIO → existing-browser | cold-start | remote-debugging-disabled
 export const RUNTIME_GATES = Object.freeze({
   skipRuntime: process.env.BROWSER_USE_SKIP_RUNTIME === "1",
   browserTests: process.env.BROWSER_USE_BROWSER_TESTS === "1",
   qualification: process.env.BROWSER_USE_QUALIFICATION === "1",
+  qualificationScenario: process.env.BROWSER_USE_QUALIFICATION_SCENARIO || "existing-browser",
 });
 
 export function requireRuntimeOrSkip(t) {
   if (RUNTIME_GATES.skipRuntime) {
-    t.skip("BROWSER_USE_SKIP_RUNTIME=1 — runtime tests skipped");
+    t.skip("BROWSER_USE_SKIP_RUNTIME=1 — runtime tests skipped by explicit request");
     return false;
   }
   if (!uvxAvailable()) {
-    t.skip(`"${mcpServerConfig().command}" not on PATH — install uv or set BROWSER_USE_SKIP_RUNTIME=1`);
-    return false;
+    // Implicit skip would let the suite go green without the real runtime (§80).
+    throw new Error(
+      `"${mcpServerConfig().command}" is not on PATH. Runtime tests must run for real: ` +
+        "install uv (https://docs.astral.sh/uv/) or explicitly set BROWSER_USE_SKIP_RUNTIME=1.",
+    );
   }
   return true;
 }

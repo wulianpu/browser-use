@@ -15,7 +15,9 @@ export const TOOL_PERMISSIONS = Object.freeze({
   browser_exec: ["browser.interact", "browser.debug", "local.code-execution"],
 });
 
-// §75 Host error contract — the stable business error API.
+// §75 Host error contract — the stable business error API. INPUT_TOO_LARGE is
+// the input-side twin of RESULT_TOO_LARGE (§56/§57): both are part of the
+// documented stable set.
 export const ERROR_CODES = Object.freeze([
   "BROWSER_USE_RUNTIME_MISSING",
   "BROWSER_USE_RUNTIME_START_FAILED",
@@ -25,6 +27,7 @@ export const ERROR_CODES = Object.freeze([
   "BROWSER_USE_PERMISSION_DENIED",
   "BROWSER_USE_TIMEOUT",
   "BROWSER_USE_RESULT_TOO_LARGE",
+  "BROWSER_USE_INPUT_TOO_LARGE",
   "BROWSER_USE_RUNTIME_CRASHED",
   "BROWSER_USE_OUTCOME_UNKNOWN",
   "BROWSER_USE_BROWSER_PERMISSION_REQUIRED",
@@ -45,10 +48,13 @@ export const LIMITS = Object.freeze({
 });
 
 // §19/§20/§21/§22 telemetry, recordings, domain skills, tab marker must be off.
+// BROWSER_USE_CLOUD_SYNC is pinned off explicitly so the plugin's local-only
+// scope (§64) does not depend on upstream's current ANONYMIZED_TELEMETRY default.
 export const REQUIRED_DISABLED_ENV = Object.freeze({
   BH_TELEMETRY: "false",
   BROWSER_HARNESS_TELEMETRY: "false",
   ANONYMIZED_TELEMETRY: "false",
+  BROWSER_USE_CLOUD_SYNC: "false",
   BH_RECORD: "0",
   BH_DOMAIN_SKILLS: "0",
   BH_TAB_MARKER: "0",
@@ -170,19 +176,33 @@ export function checkCodeInput(code) {
   };
 }
 
+// Cut a buffer at a byte limit without splitting a UTF-8 character: a naive
+// subarray().toString("utf8") would emit U+FFFD, which itself re-encodes to
+// 3 bytes and can push the delivered output back over the byte budget.
+function decodeBoundedUtf8(buf, limit) {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let end = Math.min(buf.length, limit);
+  while (end > 0) {
+    try {
+      return decoder.decode(buf.subarray(0, end));
+    } catch {
+      end -= 1; // back up over the partial trailing sequence
+    }
+  }
+  return "";
+}
+
 // §57/§89 bound textual output: bounded truncation, never an unbounded pass-through.
 export function boundTextOutput(text) {
   const buf = Buffer.from(String(text), "utf8");
   if (buf.length <= LIMITS.textOutputBytes) {
     return { truncated: false, bytes: buf.length, limit: LIMITS.textOutputBytes, text: String(text) };
   }
-  // Cut at the byte limit, then drop a possibly partial trailing UTF-8 sequence.
-  const cut = buf.subarray(0, LIMITS.textOutputBytes).toString("utf8");
   return {
     truncated: true,
     bytes: buf.length,
     limit: LIMITS.textOutputBytes,
-    text: cut,
+    text: decodeBoundedUtf8(buf, LIMITS.textOutputBytes),
     note: "BROWSER_USE_RESULT_TOO_LARGE: output truncated; re-filter/aggregate/summarize",
   };
 }

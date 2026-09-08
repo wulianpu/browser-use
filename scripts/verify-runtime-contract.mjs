@@ -21,12 +21,6 @@ const UPDATE = args.includes("--update");
 const JSON_MODE = args.includes("--json");
 const SNAPSHOT_PATH = join(repoRoot, "tests", "mcp", "contract-snapshot.json");
 
-function fail(message) {
-  if (JSON_MODE) console.log(JSON.stringify({ ok: false, error: message }));
-  else console.error(`FAIL: ${message}`);
-  process.exit(1);
-}
-
 let runtime = null;
 try {
   runtime = await startRuntime();
@@ -48,57 +42,60 @@ try {
   if (UPDATE) {
     writeFileSync(SNAPSHOT_PATH, JSON.stringify(live, null, 2) + "\n");
     console.log("Snapshot updated from live runtime. Human review required before commit (§72).");
-    process.exit(0);
-  }
-
-  const snapshot = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8"));
-  snapshot.tools = snapshot.tools.slice().sort((a, b) => a.name.localeCompare(b.name));
-
-  const problems = [];
-
-  const liveToolNames = live.tools.map((t) => t.name);
-  const snapToolNames = snapshot.tools.map((t) => t.name);
-  for (const name of snapToolNames) {
-    if (!liveToolNames.includes(name)) problems.push(`tool missing from live runtime: ${name}`);
-  }
-  for (const name of liveToolNames) {
-    if (!snapToolNames.includes(name)) problems.push(`unexpected new tool from upstream: ${name}`);
-  }
-
-  for (const snapTool of snapshot.tools) {
-    const liveTool = live.tools.find((t) => t.name === snapTool.name);
-    if (!liveTool) continue;
-    if (JSON.stringify(liveTool.inputSchema) !== JSON.stringify(snapTool.inputSchema)) {
-      problems.push(`input schema changed for "${snapTool.name}"`);
-    }
-  }
-
-  // The runtime that actually served the contract must be the pinned one.
-  if (live.serverInfo?.version !== lock.browserUse.version) {
-    problems.push(
-      `runtime version drift: served ${live.serverInfo?.version}, pinned ${lock.browserUse.version}`,
-    );
-  }
-
-  if (problems.length > 0) {
-    if (JSON_MODE) {
-      console.log(JSON.stringify({ ok: false, problems, live }, null, 2));
-    } else {
-      for (const problem of problems) console.error(`FAIL: ${problem}`);
-      console.error("Upstream MCP contract changed — release gate failed (§70).");
-      console.error("Follow the upstream upgrade flow (§72): review, update pin + lock + skill, then --update this snapshot.");
-    }
-    process.exit(1);
-  }
-
-  if (JSON_MODE) {
-    console.log(JSON.stringify({ ok: true, tools: liveToolNames, runtimeVersion: live.serverInfo?.version }, null, 2));
+    process.exitCode = 0;
   } else {
-    console.log(`OK: MCP contract matches snapshot (tools: ${liveToolNames.join(", ")}; runtime ${live.serverInfo?.version}).`);
+    const snapshot = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8"));
+    snapshot.tools = snapshot.tools.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+    const problems = [];
+
+    const liveToolNames = live.tools.map((t) => t.name);
+    const snapToolNames = snapshot.tools.map((t) => t.name);
+    for (const name of snapToolNames) {
+      if (!liveToolNames.includes(name)) problems.push(`tool missing from live runtime: ${name}`);
+    }
+    for (const name of liveToolNames) {
+      if (!snapToolNames.includes(name)) problems.push(`unexpected new tool from upstream: ${name}`);
+    }
+
+    for (const snapTool of snapshot.tools) {
+      const liveTool = live.tools.find((t) => t.name === snapTool.name);
+      if (!liveTool) continue;
+      if (JSON.stringify(liveTool.inputSchema) !== JSON.stringify(snapTool.inputSchema)) {
+        problems.push(`input schema changed for "${snapTool.name}"`);
+      }
+    }
+
+    // The runtime that actually served the contract must be the pinned one.
+    if (live.serverInfo?.version !== lock.browserUse.version) {
+      problems.push(
+        `runtime version drift: served ${live.serverInfo?.version}, pinned ${lock.browserUse.version}`,
+      );
+    }
+
+    if (problems.length > 0) {
+      if (JSON_MODE) {
+        console.log(JSON.stringify({ ok: false, problems, live }, null, 2));
+      } else {
+        for (const problem of problems) console.error(`FAIL: ${problem}`);
+        console.error("Upstream MCP contract changed — release gate failed (§70).");
+        console.error("Follow the upstream upgrade flow (§72): review, update pin + lock + skill, then --update this snapshot.");
+      }
+      process.exitCode = 1;
+    } else {
+      if (JSON_MODE) {
+        console.log(JSON.stringify({ ok: true, tools: liveToolNames, runtimeVersion: live.serverInfo?.version }, null, 2));
+      } else {
+        console.log(`OK: MCP contract matches snapshot (tools: ${liveToolNames.join(", ")}; runtime ${live.serverInfo?.version}).`);
+      }
+      process.exitCode = 0;
+    }
   }
-  process.exit(0);
 } catch (error) {
-  fail(error && error.stack ? error.stack : String(error));
+  if (JSON_MODE) console.log(JSON.stringify({ ok: false, error: String(error?.message ?? error) }));
+  else console.error(`FAIL: ${error?.stack ?? String(error)}`);
+  process.exitCode = 1;
 } finally {
+  // Runs on every path: process.exitCode (not process.exit) so cleanup executes.
   if (runtime) await runtime.client.stop();
 }

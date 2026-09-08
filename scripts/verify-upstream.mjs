@@ -22,6 +22,8 @@
 
 import { get as httpsGet } from "node:https";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { loadMcpConfig, loadUpstreamLock, repoRoot } from "../tests/helpers/runtime.mjs";
 
 const args = process.argv.slice(2);
@@ -32,6 +34,8 @@ function gitBlobSha(buf) {
   const header = Buffer.from(`blob ${buf.length}\0`, "utf8");
   return createHash("sha1").update(Buffer.concat([header, buf])).digest("hex");
 }
+
+const joinRoot = (...parts) => join(repoRoot, ...parts);
 
 function fetchRaw(url) {
   return new Promise((resolve, reject) => {
@@ -82,12 +86,22 @@ const targets = [
     url: `https://raw.githubusercontent.com/${lock.browserUse.package}/browser-use/${lock.browserUse.version}/pyproject.toml`,
     expected: lock.browserUse.pyprojectBlobSha,
     checkText: (text) => {
+      const problemsFound = [];
       const match = text.match(/^version\s*=\s*"([^"]+)"/m);
-      if (!match) return `pyproject.toml at tag ${lock.browserUse.version} has no version field`;
-      if (match[1] !== lock.browserUse.version) {
-        return `tag ${lock.browserUse.version} carries pyproject version ${match[1]}`;
+      if (!match) problemsFound.push(`pyproject.toml at tag ${lock.browserUse.version} has no version field`);
+      else if (match[1] !== lock.browserUse.version) {
+        problemsFound.push(`tag ${lock.browserUse.version} carries pyproject version ${match[1]}`);
       }
-      return null;
+      // R11: the locked Browser Harness version must be the one browser-use
+      // itself pins, so the lock never carries an unverified version string.
+      const harness = text.match(/browser-harness==([^\s"',]+)/);
+      if (!harness) problemsFound.push("pyproject.toml no longer pins browser-harness==<version>");
+      else if (harness[1] !== lock.browserHarness.version) {
+        problemsFound.push(
+          `browser-harness pin drift: pyproject says ${harness[1]}, upstream.lock says ${lock.browserHarness.version}`,
+        );
+      }
+      return problemsFound.length > 0 ? problemsFound.join("; ") : null;
     },
   },
   {
@@ -99,6 +113,17 @@ const targets = [
     label: "officialSkill.blobSha",
     url: `https://raw.githubusercontent.com/${lock.officialSkill.repository}/main/${lock.officialSkill.path}`,
     expected: lock.officialSkill.blobSha,
+  },
+  // Vendored Agent Plugins schemas: drift against agent-plugins.org is review-worthy.
+  {
+    label: "agentPlugins.pluginSchema (vendored)",
+    url: "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+    expected: gitBlobSha(readFileSync(joinRoot("tests", "manifest", "schemas", "plugin.schema.json"))),
+  },
+  {
+    label: "agentPlugins.mcpSchema (vendored)",
+    url: "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+    expected: gitBlobSha(readFileSync(joinRoot("tests", "manifest", "schemas", "mcp.schema.json"))),
   },
 ];
 

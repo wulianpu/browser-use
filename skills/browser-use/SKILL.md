@@ -1,6 +1,7 @@
 ---
 name: browser-use
 description: "Direct browser control via the official Browser Use MCP runtime (browser_exec + browser_screenshot) over CDP: web interaction, automation, scraping, testing, and work inside the user's real Chrome/Chromium with existing logged-in sessions. Use when a task needs interaction (click, type, navigate), login state, JS rendering, or bot-protected pages — not for public static content a plain HTTP fetch can read."
+license: MIT
 ---
 
 # Browser Use
@@ -76,7 +77,7 @@ matches = [n for n in nodes if n.get("role", {}).get("value") == "button"
 print(matches[:20])
 ```
 
-If a call fails with `BROWSER_USE_RESULT_TOO_LARGE`, do not retry the same code — re-filter, aggregate, or summarize harder.
+If a call fails with `BROWSER_USE_RESULT_TOO_LARGE`, do not retry the same code — re-filter, aggregate, or summarize harder. Keep each `browser_exec` under 128 KiB of code; larger procedures are rejected with `BROWSER_USE_INPUT_TOO_LARGE` — split the work instead of inflating the payload.
 
 ## Screenshots
 
@@ -92,7 +93,7 @@ After Send, Submit, Purchase, Delete, Publish, or account-changing actions, veri
 - If a possibly-mutating call ends in timeout, connection loss, MCP crash, or Chrome crash, the outcome is **unknown**: mark it `BROWSER_USE_OUTCOME_UNKNOWN` and do NOT resubmit the same code. Recover the runtime if needed, inspect the current page state, determine whether the effect already occurred, then decide the next action.
 - A crashed MCP runtime is replaced with a fresh process for the next task. Never replay the previous task's code into it.
 
-Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIME_START_FAILED`, `BROWSER_USE_MCP_HANDSHAKE_FAILED`, `BROWSER_USE_TOOL_UNAVAILABLE`, `BROWSER_USE_BUSY`, `BROWSER_USE_PERMISSION_DENIED`, `BROWSER_USE_TIMEOUT`, `BROWSER_USE_RESULT_TOO_LARGE`, `BROWSER_USE_RUNTIME_CRASHED`, `BROWSER_USE_OUTCOME_UNKNOWN`, `BROWSER_USE_BROWSER_PERMISSION_REQUIRED`. Treat these as the stable API, not Python tracebacks.
+Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIME_START_FAILED`, `BROWSER_USE_MCP_HANDSHAKE_FAILED`, `BROWSER_USE_TOOL_UNAVAILABLE`, `BROWSER_USE_BUSY`, `BROWSER_USE_PERMISSION_DENIED`, `BROWSER_USE_TIMEOUT`, `BROWSER_USE_RESULT_TOO_LARGE`, `BROWSER_USE_INPUT_TOO_LARGE`, `BROWSER_USE_RUNTIME_CRASHED`, `BROWSER_USE_OUTCOME_UNKNOWN`, `BROWSER_USE_BROWSER_PERMISSION_REQUIRED`. Treat these as the stable API, not Python tracebacks.
 
 ## Local Chrome connection
 

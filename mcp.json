@@ -18,7 +18,8 @@
         "BH_RECORD": "0",
         "BH_TELEMETRY": "false",
         "BROWSER_HARNESS_TELEMETRY": "false",
-        "ANONYMIZED_TELEMETRY": "false"
+        "ANONYMIZED_TELEMETRY": "false",
+        "BROWSER_USE_CLOUD_SYNC": "false"
       },
       "cwd": "${PLUGIN_DATA}"
     }

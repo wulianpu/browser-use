@@ -1,9 +1,25 @@
 name: ci
 
+# Supply-chain hardening (review R9):
+# - least-privilege token (read-only contents)
+# - third-party and first-party Actions pinned to full commit SHAs
+# - no persisted credentials in the workspace
 on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      qualification-scenario:
+        description: "Browser qualification scenario (§82-§84)"
+        type: choice
+        default: existing-browser
+        options:
+          - existing-browser
+          - cold-start
+          - remote-debugging-disabled
+
+permissions:
+  contents: read
 
 jobs:
   static-tests:
@@ -14,11 +30,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - name: Run static test suite (manifest, pins, security policy, budgets)
+      - run: npm ci
+      - name: Run static test suite (manifest schema, pins, security policy, budgets)
         env:
           BROWSER_USE_SKIP_RUNTIME: "1"
         run: node --test
@@ -27,11 +46,13 @@ jobs:
     name: live MCP contract (real uvx runtime, no Chrome)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           enable-cache: true
       - name: Warm the pinned runtime (first resolution needs network)
@@ -46,26 +67,38 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
       - run: node scripts/verify-upstream.mjs --json
 
+  # Manual qualification. Runner requirements (review R9):
+  #   dedicated, ephemeral, no production secrets, no personal files —
+  #   the job executes real PyPI-resolved Python code and drives a real Chrome
+  #   via browser_exec (treat the runner as an untrusted execution environment).
+  # Scenario preconditions are asserted by the tests themselves; prepare the
+  # machine accordingly (e.g. quit Chrome for cold-start, disable remote
+  # debugging for remote-debugging-disabled).
   browser-qualification:
-    name: browser qualification (manual, needs real Chrome — §81-§84)
+    name: browser qualification — ${{ inputs.qualification-scenario || 'existing-browser' }}
     runs-on: [self-hosted, chrome]
     if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 20
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           enable-cache: true
-      - name: Full suite including browser_exec-driven tests
+      - name: Full suite including browser_exec-driven qualification
         env:
           BROWSER_USE_BROWSER_TESTS: "1"
           BROWSER_USE_QUALIFICATION: "1"
+          BROWSER_USE_QUALIFICATION_SCENARIO: ${{ inputs.qualification-scenario || 'existing-browser' }}
         run: node --test

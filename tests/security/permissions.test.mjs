@@ -65,6 +65,7 @@ test("the host error contract is the documented stable API (§75)", () => {
     "BROWSER_USE_PERMISSION_DENIED",
     "BROWSER_USE_TIMEOUT",
     "BROWSER_USE_RESULT_TOO_LARGE",
+    "BROWSER_USE_INPUT_TOO_LARGE",
     "BROWSER_USE_RUNTIME_CRASHED",
     "BROWSER_USE_OUTCOME_UNKNOWN",
     "BROWSER_USE_BROWSER_PERMISSION_REQUIRED",
@@ -76,4 +77,6 @@ test("the host error contract is the documented stable API (§75)", () => {
   }
   const skill = readFileSync(join(repoRoot, "skills", "browser-use", "SKILL.md"), "utf8");
   assert.ok(skill.includes("BROWSER_USE_OUTCOME_UNKNOWN"), "skill surfaces the unknown-outcome code");
+  assert.ok(skill.includes("BROWSER_USE_INPUT_TOO_LARGE"), "skill surfaces the input-bound code");
+  assert.ok(skill.includes("BROWSER_USE_RESULT_TOO_LARGE"), "skill surfaces the output-bound code");
 });

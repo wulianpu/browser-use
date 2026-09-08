@@ -50,6 +50,10 @@ function textContent(result) {
     .join("\n");
 }
 
+function urlsOfRepr(tabListRepr) {
+  return tabListRepr.match(/https?:\/\/[^'"\s,)]+/g) ?? [];
+}
+
 async function startFixture() {
   const server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
@@ -76,7 +80,8 @@ test("browser smoke: navigation, AX observation, input, screenshot (§81)", asyn
 
   try {
     // §50: first task navigation is new_tab, not goto_url.
-    const tabsBefore = await exec("print(repr(list_tabs()))");
+    // Parsed in memory; real URLs never enter logs or assertion messages (§73).
+    const beforeUrls = (await exec("print(repr(list_tabs()))")).match(/https?:\/\/[^'"\s,)]+/g) ?? [];
 
     await exec('new_tab("https://example.com")\nprint(wait_for_load())\nprint(page_info())');
     await exec(`goto_url(${JSON.stringify(fixture.url)})\nprint(wait_for_load())\ninfo = page_info()\nprint(str(info)[:400])`);
@@ -148,17 +153,22 @@ closed = "none"
 for name in ("close_tab", "close_current_tab"):
     if name in dir():
         try:
-            closed = name + ":" + str(eval(name + "(current_tab())"))
+            closed = name
+            eval(name + "(current_tab())")
             break
-        except Exception as exc:
-            closed = name + ":error:" + str(exc)[:120]
+        except Exception:
+            closed = name + ":error"
 print("cleanup:", closed)
-print("tabs_after:", repr(list_tabs()))
 `);
-    assert.ok(!/error/.test(cleanup), "tab cleanup must not fail: " + cleanup);
-    const beforeUrls = (tabsBefore.match(/https?:\/\/[^'"\s,)]+/g) ?? []);
+    const firstLine = cleanup.trim().split("\n")[0] ?? "";
+    assert.ok(
+      /^cleanup: (close_tab|close_current_tab)$/.test(firstLine),
+      "a task-tab close helper must exist and the task tab must be closed",
+    );
+    const after = urlsOfRepr(await exec("print(repr(list_tabs()))"));
     for (const url of beforeUrls) {
-      assert.ok(cleanup.includes(url), `pre-existing tab ${url} must still be open after the task`);
+      // Compared in memory only; real URLs never enter logs or messages (§73).
+      assert.ok(after.includes(url), "a pre-existing tab disappeared during the smoke task");
     }
   } finally {
     await runtime.client.stop();

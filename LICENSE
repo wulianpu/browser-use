@@ -1,21 +1,6 @@
-<PLUGIN_LICENSE>
-
-Copyright (c) 2026 <ACTUAL_PLUGIN_PUBLISHER>
-
-NOTE: This file carries a placeholder. The actual plugin publisher must choose
-the plugin license, set it in plugin.json ("license"), and replace this file
-with the corresponding license text before any publication. See the Release
-checklist in README.md.
-
-The default expectation for this adapter repository is the MIT license text
-below; upstream runtime licenses (Browser Use, Browser Harness: MIT) are
-recorded in THIRD_PARTY_NOTICES.md.
-
----
-
 MIT License
 
-Copyright (c) 2026 <ACTUAL_PLUGIN_PUBLISHER>
+Copyright (c) 2026 WuLianpu
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

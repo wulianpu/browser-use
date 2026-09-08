@@ -16,18 +16,24 @@ test("2 MiB of stdout is truncated to the 1 MiB text budget and flagged (§89)",
   assert.ok(bounded.note.includes("BROWSER_USE_RESULT_TOO_LARGE"));
 });
 
+test("multibyte truncation never emits U+FFFD and never exceeds the byte budget (R5)", () => {
+  // 1 MiB is not divisible by 3, so the byte cut necessarily lands inside a
+  // "你" character; a naive cut would emit U+FFFD (itself 3 bytes) and could
+  // push delivered bytes back over the limit.
+  const multibyte = "你".repeat(600_000); // 1.8 MB of 3-byte characters
+  const bounded = boundTextOutput(multibyte);
+  assert.equal(bounded.truncated, true);
+  assert.ok(!bounded.text.includes("\uFFFD"), "no replacement characters from mid-character cuts");
+  assert.ok(bounded.text.length > 0, "truncation still delivers content");
+  assert.ok(Buffer.byteLength(bounded.text, "utf8") <= LIMITS.textOutputBytes, "byte budget holds after re-encoding");
+  // The cut point must be a whole number of characters.
+  assert.equal(bounded.text, "你".repeat(bounded.text.length));
+});
+
 test("small outputs pass through unmodified", () => {
   const bounded = boundTextOutput("page loaded");
   assert.equal(bounded.truncated, false);
   assert.equal(bounded.text, "page loaded");
-});
-
-test("truncation never splits a UTF-8 character into invalid output", () => {
-  const multibyte = "你".repeat(600_000); // 1.8 MB of 3-byte chars
-  const bounded = boundTextOutput(multibyte);
-  assert.equal(bounded.truncated, true);
-  const roundTrip = Buffer.from(bounded.text, "utf8").toString("utf8");
-  assert.equal(roundTrip, bounded.text, "truncated text remains valid UTF-8");
 });
 
 test("oversized screenshots exceed the image budget and fail closed (§89)", () => {

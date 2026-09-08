@@ -21,6 +21,33 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 3 (post-review)
+
+- Qualification probes: remote-debugging state is now tri-state
+  (enabled/disabled/unknown — only a determined "disabled" satisfies the
+  scenario precondition) and profile discovery covers Chromium alongside
+  Google Chrome.
+- remote-debugging-disabled scenario redesigned: instead of waiting out a
+  browser_exec timeout (upstream returns harness exceptions as ordinary text
+  and intentionally waits for user approval), it now proves within a bounded
+  window that the official permission flow was triggered (MCP stderr /
+  harness state under PLUGIN_DATA), with optional interactive completion via
+  BROWSER_USE_QUALIFICATION_APPROVE=1.
+- cold-start scenario encodes the evidence-based dual outcome: with the
+  debugging prerequisite satisfied the harness must launch and navigate;
+  without it, it must surface the documented enable-chrome://inspect
+  diagnostic (tool text or daemon log).
+- Real qualification evidence started: docs/qualification-evidence.md records
+  the first PASS (cold-start prerequisite-off branch, Windows 11,
+  browser-use 0.13.10) plus three host-relevant behavioral findings —
+  browser_exec failures arrive as text with isError=false; the actionable
+  diagnostic lives in the daemon log under PLUGIN_DATA; browser auto-launch
+  is conditional on the debugging prerequisite. SKILL.md and
+  troubleshooting.md corrected accordingly (also restores the Chromium-family
+  scope wording lost to an intermediate checkout).
+- CI Actions bumped to current majors, full-SHA pinned: checkout v7.0.1,
+  setup-node v7.0.0, setup-uv v10.0.1.
+
 ### Release hardening round 2 (post-review)
 
 - Windows CI: manifest frontmatter parsing tolerates CRLF checkouts; `.gitattributes`

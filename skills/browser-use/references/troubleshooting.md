@@ -24,7 +24,7 @@ states to the user; do not reimplement or work around them.
 ## Connection flow (local Chrome)
 
 - Normal flow attaches to the running Chrome/Chromium CDP endpoint. No browser ids or profile selection.
-- **Chrome not running** — the harness launches it automatically and retries; first launch may be slow.
+- **Chrome not running** — with the remote-debugging prerequisite satisfied, the harness launches the browser automatically and retries; without it, nothing is launched and the daemon log carries the `enable chrome://inspect/#remote-debugging` diagnostic (qualified behavior on Windows, browser-use 0.13.10).
 - **Chrome running, remote debugging not enabled** — the harness opens `chrome://inspect/#remote-debugging`; report this to the user and wait for their action.
 - **macOS remote-debugging permission** — handled by the `mac-approve` flow, which this plugin does **not** expose as an agent tool. Route it through the host's product diagnostics / user instruction flow. It applies to local Chrome only, never to `BU_CDP_URL`/`BU_CDP_WS` endpoints or cloud browsers.
 - Diagnostics command (for the user, not an agent tool): `browser-use --doctor`.

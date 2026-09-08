@@ -11,7 +11,7 @@ Direct browser control via CDP, provided by the official Browser Use runtime (pi
 - `browser_exec` — run Python with Browser Harness helpers preloaded (`page_info()`, `new_tab()`, `cdp(...)`, ...). The Python namespace persists across calls **within one logical task** and is reset between tasks.
 - `browser_screenshot` — capture the current page as an image.
 
-This plugin drives the user's local Chrome/Chromium. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
+This plugin drives the user's local browser through Browser Use. Browser Use can attach to local Chromium-family browsers (Chrome, Chromium, and others it discovers, such as Edge or Brave); **this plugin's V1 qualification covers Chrome/Chromium only** — other Chromium-family browsers may work but are unqualified here. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
 
 ## Security classification — read first
 
@@ -89,17 +89,18 @@ After Send, Submit, Purchase, Delete, Publish, or account-changing actions, veri
 
 ## Failures, timeouts, unknown outcome
 
+- Harness/runtime failures arrive as **ordinary text output** (`isError` stays false): a Python traceback whose last line names the real problem (for example `daemon didn't come up` with the daemon-log path). Always read the returned text before deciding a call succeeded — a returned traceback means failure, not success.
 - `browser_exec` calls are bounded (default 300 s; `browser_screenshot` 30 s). Keep procedures well under the budget; split long workflows into verified steps.
 - If a possibly-mutating call ends in timeout, connection loss, MCP crash, or Chrome crash, the outcome is **unknown**: mark it `BROWSER_USE_OUTCOME_UNKNOWN` and do NOT resubmit the same code. Recover the runtime if needed, inspect the current page state, determine whether the effect already occurred, then decide the next action.
 - A crashed MCP runtime is replaced with a fresh process for the next task. Never replay the previous task's code into it.
 
 Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIME_START_FAILED`, `BROWSER_USE_MCP_HANDSHAKE_FAILED`, `BROWSER_USE_TOOL_UNAVAILABLE`, `BROWSER_USE_BUSY`, `BROWSER_USE_PERMISSION_DENIED`, `BROWSER_USE_TIMEOUT`, `BROWSER_USE_RESULT_TOO_LARGE`, `BROWSER_USE_INPUT_TOO_LARGE`, `BROWSER_USE_RUNTIME_CRASHED`, `BROWSER_USE_OUTCOME_UNKNOWN`, `BROWSER_USE_BROWSER_PERMISSION_REQUIRED`. Treat these as the stable API, not Python tracebacks.
 
-## Local Chrome connection
+## Local browser connection
 
-The normal local flow attaches to the running Chrome/Chromium CDP endpoint. No browser ids or local profile selection.
+The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium qualified for V1; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
 
-- If Chrome is not running, the harness launches it automatically and retries.
+- Whether the harness can launch the browser depends on the remote-debugging prerequisite: with it satisfied, the harness launches a not-running browser and retries; without it (no user-enabled remote debugging and no live DevToolsActivePort), nothing is launched — `browser_exec` returns a traceback ending in `daemon didn't come up` pointing at the daemon log, which names the `chrome://inspect/#remote-debugging` step.
 - If Chrome is running but remote debugging is not enabled, the harness opens `chrome://inspect/#remote-debugging`; report this state to the user.
 - macOS remote-debugging permission (`mac-approve`) is **not** exposed as an agent tool by this plugin. Route it through the host's product diagnostics / user instruction flow.
 - On connection problems, see [references/troubleshooting.md](references/troubleshooting.md).

@@ -190,10 +190,11 @@ Before publishing `browser-use@1.0.0`:
 - [x] Publisher/license decided: `author.name` = WuLianpu, `license` = MIT, `repository` = <https://github.com/wulianpu/browser-use>.
 - [x] Real JSON Schema validation in CI (ajv against the vendored official Agent Plugins 1.0.0 schemas).
 - [ ] `npm test`, `node scripts/verify-runtime-contract.mjs`, `node scripts/verify-upstream.mjs` all green.
-- [ ] Browser qualification matrix: run each scenario (`existing-browser`, `cold-start`,
-      `remote-debugging-disabled`) on the target Chrome/OS combinations, each on a prepared
-      machine matching the scenario's preconditions; macOS mac-approve flow qualified via
-      product diagnostics.
+- [ ] Browser qualification matrix: every pending scenario in
+      [`docs/qualification-evidence.md`](docs/qualification-evidence.md) has a dated PASS on the
+      target Chrome/OS combinations (`existing-browser`, `cold-start` both branches,
+      `remote-debugging-disabled`, each on a prepared machine matching the scenario's
+      preconditions); macOS mac-approve flow qualified via product diagnostics.
 - [ ] **Real-Host integration proof (P0):** the host-security contract (env sanitization,
       `local.code-execution` authorization, task-boundary recycle, output bounds) demonstrated
       in the actual Agent Host, not only in this repo's reference tests.

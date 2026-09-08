@@ -16,9 +16,25 @@
 //     all further calls on it are rejected. Recovery means an explicit fresh
 //     process (§59: recover → inspect → decide), never a silent retry.
 //
+// A third, evidence-backed choice (qualified on browser-use 0.13.10): the
+// runtime prints Python/harness exceptions into the result buffer as ordinary
+// text (isError stays false), so a Host MUST NOT treat a returned result as
+// success. exec() therefore wraps the user's code with unpredictable
+// per-call sentinels and classifies:
+//
+//   OK sentinel present  → user code ran to completion        → ok
+//   ERR sentinel present → user code raised                   → BROWSER_USE_EXEC_FAILED
+//   neither sentinel     → the wrapper never ran (daemon/runtime pre-exec
+//                          failure, e.g. "daemon didn't come up") → BROWSER_USE_EXEC_FAILED
+//
+// The wrapper exec's user code with globals() for both globals and locals, so
+// the runtime's persistent-namespace semantics are preserved. Agents cannot
+// forge either sentinel: the nonce is random per call and never shown to them.
+//
 // NOT plugin runtime code. Hosts integrate this plugin behind their own
 // equivalent of this wrapper; the real-Host proof is a product release gate.
 
+import { randomBytes } from "node:crypto";
 import {
   authorizeTool,
   boundImageOutput,
@@ -83,14 +99,29 @@ export function createReferenceHostRuntime({
             throw policyError(input.code, `browser_exec code exceeds ${input.limit} bytes`);
           }
           calls.push({ task: taskId, tool: "browser_exec" });
+          const { okSentinel, errSentinel, wrapped } = wrapWithSentinels(code);
           try {
-            const raw = await this._transport.callTool("browser_exec", { code }, timeouts.browser_exec);
-            const bounded = boundTextOutput(textOf(raw));
+            const raw = await this._transport.callTool("browser_exec", { code: wrapped }, timeouts.browser_exec);
+            const classification = classifyExecResult(raw, { okSentinel, errSentinel });
+            const bounded = boundTextOutput(classification.text);
+            if (classification.ok) {
+              return {
+                ok: true,
+                code: bounded.truncated ? "BROWSER_USE_RESULT_TOO_LARGE" : null,
+                truncated: bounded.truncated,
+                text: bounded.text,
+              };
+            }
+            // A determined textual failure: the call completed, so the outcome
+            // is known-failed (not unknown) and the transport stays usable.
             return {
-              ok: true,
-              code: bounded.truncated ? "BROWSER_USE_RESULT_TOO_LARGE" : null,
-              truncated: bounded.truncated,
+              ok: false,
+              code: "BROWSER_USE_EXEC_FAILED",
+              outcome: "known-failed",
+              replay: false,
+              failureClass: classification.failureClass,
               text: bounded.text,
+              nextStep: ["read the returned traceback", "fix the procedure", "retry deliberately"],
             };
           } catch (error) {
             // §58/§59: a timed-out call may still be executing server-side.
@@ -142,4 +173,54 @@ export function createReferenceHostRuntime({
   }
 
   return { withTask, calls };
+}
+
+// Wrap user code with unpredictable per-call sentinels. The wrapper is plain
+// Python executed by the official browser_exec — no runtime is reimplemented —
+// and exec's the user code with globals() for both scopes so definitions keep
+// landing in the runtime's persistent namespace. JSON.stringify output is a
+// valid Python double-quoted literal (same escapes for \\, \", \n, \uXXXX).
+function wrapWithSentinels(userCode) {
+  const nonce = randomBytes(16).toString("hex");
+  const okSentinel = `__BROWSER_USE_EXEC_OK_${nonce}__`;
+  const errSentinel = `__BROWSER_USE_EXEC_ERR_${nonce}__`;
+  const wrapped = [
+    "try:",
+    `    exec(compile(${JSON.stringify(userCode)}, "<browser_exec>", "exec"), globals(), globals())`,
+    "except BaseException:",
+    `    print(${JSON.stringify(errSentinel)})`,
+    "    import traceback",
+    "    traceback.print_exc()",
+    "else:",
+    `    print(${JSON.stringify(okSentinel)})`,
+  ].join("\n");
+  return { okSentinel, errSentinel, wrapped };
+}
+
+// Classify a finished (non-transport-failing) browser_exec result. Substring
+// matching is unforgeable because the nonce is random per call and never
+// exposed to the agent; it also survives user output printed without a
+// trailing newline.
+function classifyExecResult(raw, { okSentinel, errSentinel }) {
+  const text = textOf(raw);
+  if (raw && raw.isError === true) {
+    return { ok: false, failureClass: "mcp-error", text };
+  }
+  const hasErr = text.includes(errSentinel);
+  const hasOk = text.includes(okSentinel);
+  if (hasErr) {
+    return { ok: false, failureClass: "user-code-exception", text: stripSentinels(text, okSentinel, errSentinel) };
+  }
+  if (hasOk) {
+    return { ok: true, text: stripSentinels(text, okSentinel, errSentinel) };
+  }
+  // Neither sentinel: the wrapper never ran — a pre-exec runtime/daemon
+  // failure arrived as plain text (observed: "daemon didn't come up"
+  // tracebacks) or the result shape is unrecognized. Deterministically a
+  // failure, never a success.
+  return { ok: false, failureClass: "pre-exec-runtime-failure", text };
+}
+
+function stripSentinels(text, okSentinel, errSentinel) {
+  return text.split(okSentinel).join("").split(errSentinel).join("");
 }

@@ -17,6 +17,7 @@ states to the user; do not reimplement or work around them.
 | `BROWSER_USE_TIMEOUT` | Tool call exceeded its bound (exec 300 s, screenshot 30 s defaults) | Split the procedure into smaller verified steps; if the call may have mutated state, treat outcome as unknown |
 | `BROWSER_USE_RESULT_TOO_LARGE` | Output exceeded bounds (text 1 MiB, screenshot 16 MiB) | Re-run with harder filtering/aggregation/summarization in Python; never print raw dumps |
 | `BROWSER_USE_INPUT_TOO_LARGE` | browser_exec code exceeded 128 KiB | Split the procedure into smaller verified steps; never inflate the payload |
+| `BROWSER_USE_EXEC_FAILED` | The runtime returned a textual traceback (user-code exception, or a pre-exec daemon/runtime failure such as `daemon didn't come up`) | Read the returned traceback; daemon-level failures point at the daemon log under PLUGIN_DATA — see connection flow below |
 | `BROWSER_USE_RUNTIME_CRASHED` | MCP process exited abnormally | Next task starts a fresh process; inspect page state before any next action; never replay prior code |
 | `BROWSER_USE_OUTCOME_UNKNOWN` | Possible side effect + timeout/disconnect/crash | Do NOT resubmit. Recover, inspect current page state, decide whether the effect already occurred |
 | `BROWSER_USE_BROWSER_PERMISSION_REQUIRED` | Chrome remote debugging not granted/ready | See connection flow below |

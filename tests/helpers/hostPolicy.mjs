@@ -6,7 +6,7 @@
 // behavior, and so hosts integrating this plugin can copy a known-good baseline.
 
 import { existsSync } from "node:fs";
-import { mkdir, rename } from "node:fs/promises";
+import { mkdir, open, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 // §25 Host permission requirements.
@@ -16,8 +16,9 @@ export const TOOL_PERMISSIONS = Object.freeze({
 });
 
 // §75 Host error contract — the stable business error API. INPUT_TOO_LARGE is
-// the input-side twin of RESULT_TOO_LARGE (§56/§57): both are part of the
-// documented stable set.
+// the input-side twin of RESULT_TOO_LARGE (§56/§57); EXEC_FAILED classifies the
+// runtime's textual exception results (browser_exec prints tracebacks into the
+// result buffer with isError=false). Both are part of the documented stable set.
 export const ERROR_CODES = Object.freeze([
   "BROWSER_USE_RUNTIME_MISSING",
   "BROWSER_USE_RUNTIME_START_FAILED",
@@ -28,6 +29,7 @@ export const ERROR_CODES = Object.freeze([
   "BROWSER_USE_TIMEOUT",
   "BROWSER_USE_RESULT_TOO_LARGE",
   "BROWSER_USE_INPUT_TOO_LARGE",
+  "BROWSER_USE_EXEC_FAILED",
   "BROWSER_USE_RUNTIME_CRASHED",
   "BROWSER_USE_OUTCOME_UNKNOWN",
   "BROWSER_USE_BROWSER_PERMISSION_REQUIRED",
@@ -241,30 +243,56 @@ export function decideAfterFailure({ sideEffectPossible, failure }) {
 // §41 quarantine persistent self-modifying state before a new independent
 // execution context starts. Browser Harness runtime/config state is untouched.
 //
-// Quarantined files (both auto-loaded by the harness on import):
-//   agent-workspace/agent_helpers.py — task-authored executable helper code
-//   agent-workspace/.env             — task-authored environment overlay; the
-//       harness os.environ.setdefault()s it, so a leftover file can redirect
-//       the NEXT task's harness connection (BU_NAME/BU_CDP_URL/BU_CDP_WS/...)
+// Per-file policy:
+//   agent-workspace/agent_helpers.py — task-authored executable code, no
+//       credentials expected → quarantined (kept) for diagnostics.
+//   agent-workspace/.env — task-authored environment overlay, MAY contain
+//       credentials, and the harness setdefault()s it into the next task's
+//       environment (BU_NAME/BU_CDP_URL/BU_CDP_WS/...) → securely deleted;
+//       only non-content metadata is recorded. Best-effort overwrite-then-
+//       unlink; hosts with stricter requirements should keep PLUGIN_DATA on
+//       encrypted storage and may zero the whole quarantine area.
 //
 // Hosts may go further and give every task a clean agent-workspace; harness
 // state that legitimately persists belongs under BH_HOME instead.
 export async function prepareExecutionContext(pluginData) {
   const workspace = join(pluginData, "agent-workspace");
   await mkdir(workspace, { recursive: true });
-  const quarantineTargets = ["agent_helpers.py", ".env"];
-  const quarantined = [];
-  for (const filename of quarantineTargets) {
-    const filePath = join(workspace, filename);
-    if (existsSync(filePath)) {
-      const quarantineDir = join(pluginData, "quarantine");
-      await mkdir(quarantineDir, { recursive: true });
-      const destination = join(quarantineDir, `${Date.now()}-${process.pid}-${filename}`);
-      await rename(filePath, destination);
-      quarantined.push(destination);
-    }
+  const result = { workspace, quarantined: [], removedEnv: null };
+  const helperPath = join(workspace, "agent_helpers.py");
+  if (existsSync(helperPath)) {
+    const quarantineDir = join(pluginData, "quarantine");
+    await mkdir(quarantineDir, { recursive: true });
+    const destination = join(quarantineDir, `${Date.now()}-${process.pid}-agent_helpers.py`);
+    await rename(helperPath, destination);
+    result.quarantined.push(destination);
   }
-  return { workspace, quarantined };
+  const envPath = join(workspace, ".env");
+  if (existsSync(envPath)) {
+    const removed = await secureRemoveFile(envPath);
+    const quarantineDir = join(pluginData, "quarantine");
+    await mkdir(quarantineDir, { recursive: true });
+    const metadataPath = join(quarantineDir, `${Date.now()}-${process.pid}-env.removed.json`);
+    await writeFile(metadataPath, JSON.stringify({ original: ".env", removedAt: new Date().toISOString(), ...removed }, null, 2));
+    result.removedEnv = metadataPath;
+  }
+  return result;
+}
+
+// Overwrite with zeros, then unlink. Best-effort (journaling/SSD wear-leveling
+// defeat guaranteed erasure); the guarantee that matters here is that no
+// plaintext credential is retained by the plugin's own state.
+async function secureRemoveFile(filePath) {
+  const stats = await stat(filePath);
+  const handle = await open(filePath, "r+");
+  try {
+    await handle.writeFile(Buffer.alloc(stats.size));
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await unlink(filePath);
+  return { originalBytes: stats.size };
 }
 
 // §39/§87 single-flight gate: one logical browser task per MCP runtime; a second

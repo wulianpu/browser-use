@@ -133,6 +133,11 @@ runScenario("cold-start: harness behavior from a not-running browser", async () 
   //   flag disabled  → harness does NOT launch; it returns the documented
   //                    bounded, actionable diagnostic instead
   const debugging = remoteDebuggingState();
+  assert.notEqual(
+    debugging.state,
+    "unknown",
+    `precondition could not be determined — the scenario must not claim a branch it cannot verify: ${debugging.reason ?? "unknown probe result"}`,
+  );
   const runtime = await startRuntime();
   let taskTabCreated = false;
   const exec = async (code) => textContent(await runtime.client.callTool("browser_exec", { code }, 240_000));

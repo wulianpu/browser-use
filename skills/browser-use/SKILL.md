@@ -94,7 +94,7 @@ After Send, Submit, Purchase, Delete, Publish, or account-changing actions, veri
 - If a possibly-mutating call ends in timeout, connection loss, MCP crash, or Chrome crash, the outcome is **unknown**: mark it `BROWSER_USE_OUTCOME_UNKNOWN` and do NOT resubmit the same code. Recover the runtime if needed, inspect the current page state, determine whether the effect already occurred, then decide the next action.
 - A crashed MCP runtime is replaced with a fresh process for the next task. Never replay the previous task's code into it.
 
-Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIME_START_FAILED`, `BROWSER_USE_MCP_HANDSHAKE_FAILED`, `BROWSER_USE_TOOL_UNAVAILABLE`, `BROWSER_USE_BUSY`, `BROWSER_USE_PERMISSION_DENIED`, `BROWSER_USE_TIMEOUT`, `BROWSER_USE_RESULT_TOO_LARGE`, `BROWSER_USE_INPUT_TOO_LARGE`, `BROWSER_USE_RUNTIME_CRASHED`, `BROWSER_USE_OUTCOME_UNKNOWN`, `BROWSER_USE_BROWSER_PERMISSION_REQUIRED`. Treat these as the stable API, not Python tracebacks.
+Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIME_START_FAILED`, `BROWSER_USE_MCP_HANDSHAKE_FAILED`, `BROWSER_USE_TOOL_UNAVAILABLE`, `BROWSER_USE_BUSY`, `BROWSER_USE_PERMISSION_DENIED`, `BROWSER_USE_TIMEOUT`, `BROWSER_USE_RESULT_TOO_LARGE`, `BROWSER_USE_INPUT_TOO_LARGE`, `BROWSER_USE_EXEC_FAILED`, `BROWSER_USE_RUNTIME_CRASHED`, `BROWSER_USE_OUTCOME_UNKNOWN`, `BROWSER_USE_BROWSER_PERMISSION_REQUIRED`. Treat these as the stable API, not Python tracebacks.
 
 ## Local browser connection
 

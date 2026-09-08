@@ -56,9 +56,14 @@ Any contribution that adds a CDP layer, browser driver, tab manager, provider ab
 The plugin intentionally stays thin; the following are **host obligations**, with an executable
 reference implementation in [`tests/helpers/hostPolicy.mjs`](tests/helpers/hostPolicy.mjs)
 (individual policies) and [`tests/helpers/referenceHostRuntime.mjs`](tests/helpers/referenceHostRuntime.mjs)
-(the composed wrapper — permission → input bound → single-flight → timeout → output bound →
-failure classification → task recycle — exercised end-to-end by
-[`tests/security/reference-host.test.mjs`](tests/security/reference-host.test.mjs)):
+(the composed wrapper — permission → input bound → single-flight → timeout → **textual exec-failure
+classification** → output bound → failure classification → transport poisoning/recovery → task
+recycle — exercised end-to-end by
+[`tests/security/reference-host.test.mjs`](tests/security/reference-host.test.mjs), including a
+real-runtime classification test against the pinned browser-use). Because `browser_exec` returns
+Python/harness exceptions as ordinary text with `isError: false`, hosts must classify those results
+as failures; the reference host does this with unpredictable per-call sentinels wrapped around the
+agent's code — no runtime reimplementation, and the persistent-namespace semantics are preserved.
 
 - **Authorization (§25):** `browser_screenshot` → `browser.observe`; `browser_exec` →
   `browser.interact` + `browser.debug` + `local.code-execution`. Without
@@ -86,8 +91,9 @@ failure classification → task recycle — exercised end-to-end by
 > **Integration release gate (P0):** the reference policy in this repo proves the contract is
 > implementable and self-consistent, but it is *test code*. Before shipping a product build, run
 > the same contract suites against the **real Host**: environment sanitization, `local.code-execution`
-> authorization, task-boundary recycle, and output bounds must be verified in the actual host
-> process, not only here. "Plugin repo PASS" ≠ "Product integration PASS".
+> authorization, task-boundary recycle, output bounds, **and textual `browser_exec` failure
+> classification** must be verified in the actual host process, not only here. "Plugin repo PASS"
+> ≠ "Product integration PASS".
 
 ## Security model
 

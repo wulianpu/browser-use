@@ -34,12 +34,24 @@ tab contents are recorded here (§73).
   that upstream claim does **not** hold on Windows with the debugging
   prerequisite unsatisfied. SKILL.md has been corrected accordingly.
 
+### 2026-09-08 — exec failure classification, real runtime (Windows 11, browser-use 0.13.10)
+
+- Command: `BROWSER_USE_BROWSER_TESTS=1 node tests/security/reference-host.test.mjs`
+  (test 13, real-runtime branch).
+- Result: **PASS** — through the reference host's sentinel wrapper, `print(1+1)`
+  and `raise ValueError(...)` both came back from the real MCP server as
+  pre-exec daemon-failure text (no sentinel printed, `isError: false`) and were
+  classified `BROWSER_USE_EXEC_FAILED` / `pre-exec-runtime-failure`; neither was
+  reported as success. On a machine with an attachable browser the same test
+  additionally exercises the `user-code-exception` and success branches.
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
    prints tracebacks into the result buffer with `isError: false`. Hosts must
-   not treat `isError` as the failure signal; scan the textual output for
-   tracebacks (the reference host's output bounding already wraps this).
+   classify textual traceback results as execution failures; output bounding
+   alone is insufficient (the reference host classifies via per-call
+   sentinels — see `tests/helpers/referenceHostRuntime.mjs`).
 2. **The actionable diagnostic lives in the daemon log** under
    `${PLUGIN_DATA}/browser-harness/tmp/bu-default.log`; the tool text points at
    it. Hosts diagnosing "daemon didn't come up" should read that file.

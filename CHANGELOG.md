@@ -21,6 +21,28 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 4 (post-review)
+
+- P0: the reference host no longer classifies textual runtime failures as
+  success. browser_exec now wraps agent code with unpredictable per-call
+  OK/ERR sentinels (plain Python through the official tool; persistent
+  namespace preserved via exec(compile(...), globals(), globals())) and
+  classifies three ways: OK sentinel → success; ERR sentinel →
+  BROWSER_USE_EXEC_FAILED (user-code exception, transport stays usable);
+  neither → BROWSER_USE_EXEC_FAILED (pre-exec runtime/daemon failure such as
+  "daemon didn't come up"). isError=true results are failures too. Validated
+  against the real browser-use@0.13.10 runtime.
+- BROWSER_USE_EXEC_FAILED added to the stable error contract (policy, skill,
+  troubleshooting, tests).
+- cold-start qualification rejects an "unknown" remote-debugging state
+  instead of silently treating it as the disabled branch.
+- agent-workspace/.env leftovers are securely deleted (overwrite + unlink)
+  with metadata-only records — quarantined text may not retain credentials;
+  agent_helpers.py remains quarantined for diagnostics.
+- README host-integration gate now includes textual exec-failure
+  classification; qualification-evidence.md wording corrected (output
+  bounding alone does not classify failures).
+
 ### Release hardening round 3 (post-review)
 
 - Qualification probes: remote-debugging state is now tri-state

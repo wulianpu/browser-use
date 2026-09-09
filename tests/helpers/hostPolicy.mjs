@@ -41,9 +41,13 @@ export const DEFAULT_TIMEOUTS_MS = Object.freeze({
 });
 export const MAX_TIMEOUTS_MS = Object.freeze({ browser_exec: 1_800_000 });
 
-// §56/§57 Input and output bounds.
+// §56/§57 Input and output bounds. codeInputBytes bounds the AGENT-PROVIDED
+// procedure source; the wrapped MCP payload is somewhat larger (wrapper text
+// plus JSON escaping), so wrappedPayloadBytes is a separate defense-in-depth
+// cap on what is actually dispatched.
 export const LIMITS = Object.freeze({
   codeInputBytes: 128 * 1024,
+  wrappedPayloadBytes: 1024 * 1024,
   textOutputBytes: 1024 * 1024,
   imageOutputBytes: 16 * 1024 * 1024,
 });
@@ -260,14 +264,19 @@ export function decideAfterFailure({ sideEffectPossible, failure }) {
 // storage, which also covers the unlinked blocks.
 export async function prepareExecutionContext(pluginData) {
   const workspace = join(pluginData, "agent-workspace");
-  await mkdir(workspace, { recursive: true });
   const quarantineDir = join(pluginData, "quarantine");
+  // PLUGIN_DATA itself is trusted client-managed state, but its task-writable
+  // subdirectories are not: a previous task could have replaced either with a
+  // symlink, silently redirecting sanitation/unlink and quarantine/metadata
+  // writes outside PLUGIN_DATA. Both must be REAL directories before any
+  // child is touched; anything else fails closed.
+  await ensureRealDirectory(workspace);
+  await ensureRealDirectory(quarantineDir);
   const result = { workspace, quarantined: [], removed: [] };
 
   const helperPath = join(workspace, "agent_helpers.py");
   const helperKind = await artifactKind(helperPath);
   if (helperKind === "regular") {
-    await mkdir(quarantineDir, { recursive: true });
     const destination = join(quarantineDir, `${Date.now()}-${process.pid}-agent_helpers.py`);
     await rename(helperPath, destination);
     // TOCTOU guard: re-verify what actually landed in quarantine — if another
@@ -292,9 +301,25 @@ export async function prepareExecutionContext(pluginData) {
   return result;
 }
 
+// A directory we are about to treat as plugin-owned must be a real directory,
+// not a symlink (lstat never follows). Missing → create and re-verify; any
+// other error propagates (fail-closed).
+async function ensureRealDirectory(dirPath) {
+  let stats = await lstat(dirPath).catch((error) => {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") return null;
+    throw error;
+  });
+  if (!stats) {
+    await mkdir(dirPath, { recursive: true });
+    stats = await lstat(dirPath);
+  }
+  if (stats.isSymbolicLink() || !stats.isDirectory()) {
+    throw new Error(`untrusted plugin data directory: ${dirPath} is not a real directory`);
+  }
+}
+
 async function recordRemoval(quarantineDir, unlinkPath, original, kind, action, holder) {
   await unlink(unlinkPath);
-  await mkdir(quarantineDir, { recursive: true });
   const recordPath = join(quarantineDir, `${Date.now()}-${process.pid}-${original.replace(/[^\w.-]/g, "_")}.record.json`);
   await writeFile(recordPath, JSON.stringify({ original, kind, action, removedAt: new Date().toISOString() }, null, 2));
   holder.removed.push({ original, kind, action, recordPath });

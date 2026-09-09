@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { link, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -134,6 +134,39 @@ test("regular helpers quarantined and .env removed in one pass", async () => {
   assert.equal(context.removed.length, 1);
   assert.ok(!existsSync(join(workspace, "agent_helpers.py")));
   assert.ok(!existsSync(join(workspace, ".env")));
+});
+
+test("a symlinked agent-workspace directory fails closed — outside files untouched", async () => {
+  const pluginData = await makePluginData();
+  const outsideDir = await mkdtemp(join(tmpdir(), "bu-outside-"));
+  await writeFile(join(outsideDir, ".env"), "outside env must survive");
+  const created = await trySymlink(outsideDir, join(pluginData, "agent-workspace"));
+  if (!created) {
+    return; // symlink privilege unavailable (unprivileged Windows)
+  }
+
+  await assert.rejects(
+    prepareExecutionContext(pluginData),
+    /untrusted plugin data directory/,
+    "a parent-directory symlink must abort sanitation",
+  );
+  assert.equal(await readFile(join(outsideDir, ".env"), "utf8"), "outside env must survive", "nothing may be unlinked through the symlinked parent");
+});
+
+test("a symlinked quarantine directory fails closed before anything is moved", async () => {
+  const pluginData = await makePluginData();
+  const outsideDir = await mkdtemp(join(tmpdir(), "bu-outside-"));
+  await writeFile(join(outsideDir, "canary.txt"), "must not gain quarantine artifacts");
+  const created = await trySymlink(outsideDir, join(pluginData, "quarantine"));
+  if (!created) {
+    return; // symlink privilege unavailable (unprivileged Windows)
+  }
+  const workspace = await makeWorkspace(pluginData);
+  await writeFile(join(workspace, "agent_helpers.py"), "x = 1\n");
+
+  await assert.rejects(prepareExecutionContext(pluginData), /untrusted plugin data directory/);
+  assert.ok(await readFile(join(workspace, "agent_helpers.py"), "utf8").then((t) => t === "x = 1\n"), "the helper is left in place for investigation, not moved through the symlink");
+  assert.deepEqual((await readdir(outsideDir)).sort(), ["canary.txt"], "no quarantine writes outside PLUGIN_DATA");
 });
 
 test("clean PLUGIN_DATA: nothing quarantined or removed, workspace ensured (§18 layout)", async () => {

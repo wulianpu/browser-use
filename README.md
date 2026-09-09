@@ -83,15 +83,18 @@ preserved and no runtime is reimplemented.
   `tools/list` only (never auto-open Chrome); one logical browser task per MCP process
   (`browser_exec`'s Python namespace persists across calls); recycle the process at task
   boundaries; single-flight for concurrent tasks (`BROWSER_USE_BUSY` or queue).
-- **Bounds (§55-§57):** `browser_exec` ≤ 300 s default / 1 800 s max, code ≤ 128 KiB, textual
-  output ≤ 1 MiB, screenshots ≤ 16 MiB (`BROWSER_USE_RESULT_TOO_LARGE`).
+- **Bounds (§55-§57):** `browser_exec` ≤ 300 s default / 1 800 s max; the 128 KiB input bound applies
+  to the **agent-provided procedure source** (the dispatched wrapped MCP payload is somewhat larger
+  — wrapper text plus JSON escaping — and carries its own 1 MiB defense-in-depth cap); textual
+  output ≤ 1 MiB; screenshots ≤ 16 MiB (`BROWSER_USE_RESULT_TOO_LARGE`).
 - **Unknown outcome (§58-§60):** after timeout/disconnect/crash of a possibly-mutating call →
   outcome unknown, **never auto-replay**; recover, inspect page state, then decide.
 - **Workspace sanitation (§40/§41):** before a new independent execution context, sanitize
   `${PLUGIN_DATA}/agent-workspace` as untrusted filesystem state: `agent_helpers.py` is quarantined
   readable only as a regular single-link file; `.env` (harness auto-loaded, possibly credentials) is
-  always removed with metadata-only records — content never retained. Symlinks are never followed,
-  shared inodes are never quarantined, classification is lstat-based and fail-closed, and the
+  always removed with metadata-only records — content never retained. Symlinks are never followed —
+  including parent-directory symlinks: `agent-workspace` and `quarantine` themselves must be real
+  directories or preparation fails closed; classification is lstat-based and fail-closed; and the
   quarantine destination is re-verified after rename (TOCTOU guard). Persistent self-modifying
   helpers remain out of scope.
 - **Error contract (§75):** map failures to the stable `BROWSER_USE_*` codes; never surface raw

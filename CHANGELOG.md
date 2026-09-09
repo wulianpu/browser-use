@@ -21,6 +21,24 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 7 (post-review)
+
+- P1: parent-directory symlinks close the last sanitation gap —
+  ensureRealDirectory() requires agent-workspace and quarantine to be real
+  non-symlink directories (lstat-based, fail-closed: missing → create +
+  re-verify; anything else aborts preparation), so a swapped parent can no
+  longer redirect sanitation unlinks or quarantine/metadata writes outside
+  PLUGIN_DATA.
+- P2: wrapper instrumentation is now transient and collision-proof — the
+  emitter function is nonce-named per call, and __bu_* names are popped from
+  the persistent namespace after the call (the runner catches BaseException,
+  so cleanup always executes; a user's own __bu_run variable is untouched).
+  Verified by new Python-executed tests.
+- P2: input-bound wording made precise — 128 KiB applies to the
+  agent-provided source; the dispatched wrapped payload carries its own
+  1 MiB defense-in-depth cap (worst-case JSON escaping of in-bounds source
+  stays well under it, covered by a new test).
+
 ### Release hardening round 6 (post-review)
 
 - P0 correctness: sentinel instrumentation no longer depends on names shared

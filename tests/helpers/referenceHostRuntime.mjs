@@ -61,6 +61,7 @@ import {
   createBrowserRuntimeGate,
   decideAfterFailure,
   DEFAULT_TIMEOUTS_MS,
+  LIMITS,
   policyError,
 } from "./hostPolicy.mjs";
 
@@ -118,6 +119,12 @@ export function createReferenceHostRuntime({
           }
           calls.push({ task: taskId, tool: "browser_exec" });
           const { okSentinel, errSentinel, wrapped } = wrapWithSentinels(code);
+          // The 128 KiB input bound covers the agent's source; the wrapped
+          // payload is larger (wrapper + JSON escaping) and gets its own cap.
+          const wrappedBytes = Buffer.byteLength(wrapped, "utf8");
+          if (wrappedBytes > LIMITS.wrappedPayloadBytes) {
+            throw policyError("BROWSER_USE_INPUT_TOO_LARGE", `wrapped payload is ${wrappedBytes} bytes (cap ${LIMITS.wrappedPayloadBytes})`);
+          }
           try {
             const raw = await this._transport.callTool("browser_exec", { code: wrapped }, timeouts.browser_exec);
             const classification = classifyExecResult(raw, { okSentinel, errSentinel });
@@ -215,9 +222,10 @@ export function wrapWithSentinels(userCode) {
   const nonce = randomBytes(16).toString("hex");
   const okSentinel = `__BROWSER_USE_EXEC_OK_${nonce}__`;
   const errSentinel = `__BROWSER_USE_EXEC_ERR_${nonce}__`;
+  const runner = `__bu_run_${nonce}`;
   const wrapped = [
     "import builtins as __bu_b, sys as __bu_sys, traceback as __bu_tb",
-    "def __bu_run(__code, __ok, __err,",
+    `def ${runner}(__code, __ok, __err,`,
     "    __exec=__bu_b.exec, __compile=__bu_b.compile, __globals=__bu_b.globals(),",
     "    __base_exception=__bu_b.BaseException, __print=__bu_b.print,",
     "    __traceback=__bu_tb, __output=__bu_sys.stdout):",
@@ -228,7 +236,19 @@ export function wrapWithSentinels(userCode) {
     "        __traceback.print_exc(file=__output)",
     "    else:",
     "        __print(__ok, file=__output)",
-    `__bu_run(${JSON.stringify(userCode)}, ${JSON.stringify(okSentinel)}, ${JSON.stringify(errSentinel)})`,
+    `${runner}(${JSON.stringify(userCode)}, ${JSON.stringify(okSentinel)}, ${JSON.stringify(errSentinel)})`,
+    // Transient instrumentation: leave the persistent namespace as we found
+    // it. The runner never propagates exceptions (it catches BaseException),
+    // so cleanup always runs; pop() never raises on missing keys.
+    "try:",
+    "    __bu_g = __bu_b.globals()",
+    "    __bu_g.pop('__bu_b', None)",
+    "    __bu_g.pop('__bu_sys', None)",
+    "    __bu_g.pop('__bu_tb', None)",
+    `    __bu_g.pop(${JSON.stringify(runner)}, None)`,
+    "    __bu_g.pop('__bu_g', None)",
+    "except BaseException:",
+    "    pass",
   ].join("\n");
   return { okSentinel, errSentinel, wrapped };
 }

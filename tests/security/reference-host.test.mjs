@@ -76,6 +76,19 @@ test("denied exec never reaches the transport — permission precedes dispatch (
   assert.equal(transport.stopped, 1, "transport still recycled after the failed task");
 });
 
+test("worst-case JSON escaping within the 128 KiB source bound still passes the wrapped-payload valve (§56)", async () => {
+  // Control characters JSON-escape 1 byte -> 6 chars (\u0001); a pathological
+  // source near the input bound is the largest possible wrapped payload.
+  const pathological = "\x01".repeat(120 * 1024);
+  const transport = makeFakeTransport({ respond: runtimeLikeRespond({ mode: "ok" }) });
+  const host = hostWith(transport);
+  const result = await host.withTask("t1", (task) => task.exec(pathological));
+  assert.equal(result.ok, true, "the valve must tolerate worst-case escaping of in-bounds source");
+  const wrappedBytes = Buffer.byteLength(transport.callLog[0].args.code, "utf8");
+  assert.ok(wrappedBytes > 700 * 1024, "the payload really was escape-inflated");
+  assert.ok(wrappedBytes <= 1024 * 1024, "and stayed under the wrapped cap");
+});
+
 test("oversized code is rejected before dispatch with INPUT_TOO_LARGE (§56)", async () => {
   const transport = makeFakeTransport({ respond: runtimeLikeRespond() });
   const host = hostWith(transport);

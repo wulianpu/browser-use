@@ -124,3 +124,37 @@ test("sentinels are per-call and do not collide across calls", async () => {
   assert.notEqual(first.errSentinel, second.errSentinel);
   assert.match(first.okSentinel, /^__BROWSER_USE_EXEC_OK_[0-9a-f]{32}__$/);
 });
+
+test("instrumentation is transient: __bu_* names are cleaned from the namespace after a call", async (t) => {
+  const probe = [
+    "print('leftovers:',",
+    "    '__bu_b' in globals(),",
+    "    '__bu_sys' in globals(),",
+    "    '__bu_tb' in globals(),",
+    "    '__bu_g' in globals(),",
+    "    any(name.startswith('__bu_run_') for name in globals()),",
+    ")",
+  ].join("\n");
+  const result = await runInPython([wrapWithSentinels("pass").wrapped, probe]);
+  if (!maybeSkipPython(t, result)) return;
+  assert.match(result.stdout, /leftovers:\s*False\s+False\s+False\s+False\s+False/, "no instrumentation names persist");
+  assert.ok(result.stdout.includes("__BROWSER_USE_EXEC_OK_"), "the call itself still succeeded");
+});
+
+test("cleanup also runs after a raising call", async (t) => {
+  const probe = "print('bu_b_left:', '__bu_b' in globals())";
+  const result = await runInPython([wrapWithSentinels("raise ValueError('boom')").wrapped, probe]);
+  if (!maybeSkipPython(t, result)) return;
+  assert.ok(result.stdout.includes("__BROWSER_USE_EXEC_ERR_"));
+  assert.ok(result.stdout.includes("bu_b_left: False"), "the runner catches the exception, so cleanup always executes");
+});
+
+test("a user's own __bu_run variable is not clobbered by the nonce-named emitter (P2.1)", async (t) => {
+  const call1 = wrapWithSentinels("__bu_run = 42\n__bu_marker = 'kept'");
+  const probe = "print('user __bu_run:', __bu_run, '| marker:', __bu_marker)";
+  const result = await runInPython([call1.wrapped, probe]);
+  if (!maybeSkipPython(t, result)) return;
+  assert.ok(result.stdout.includes("user __bu_run: 42"), "user variable of the same base name survives");
+  assert.ok(result.stdout.includes("marker: kept"));
+  assert.ok(result.stdout.includes(call1.okSentinel), "and the call still reports success");
+});

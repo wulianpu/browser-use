@@ -237,9 +237,17 @@ export function wrapWithSentinels(userCode) {
     "    else:",
     "        __print(__ok, file=__output)",
     `${runner}(${JSON.stringify(userCode)}, ${JSON.stringify(okSentinel)}, ${JSON.stringify(errSentinel)})`,
-    // Transient instrumentation: leave the persistent namespace as we found
-    // it. The runner never propagates exceptions (it catches BaseException),
-    // so cleanup always runs; pop() never raises on missing keys.
+    // Near-transient instrumentation: the runner is nonce-named and removes
+    // itself via its captured globals; __bu_b/__bu_sys/__bu_tb exist only for
+    // the duration of this payload and are popped afterwards. Known accepted
+    // limitation (P2, post-1.0 polish): if agent code already bound values to
+    // those exact adapter-private names before the call, they are overwritten
+    // and then removed, not restored — so the namespace afterwards equals the
+    // namespace before, plus user-code changes, MINUS any pre-existing
+    // __bu_b/__bu_sys/__bu_tb values. The fully clean shape (imports inside
+    // the runner's local scope, self-deleting via finally) is documented here
+    // for a future change; user-visible persistent-namespace semantics are
+    // unaffected either way.
     "try:",
     "    __bu_g = __bu_b.globals()",
     "    __bu_g.pop('__bu_b', None)",

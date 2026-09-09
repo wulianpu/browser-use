@@ -33,7 +33,10 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
   emitter function is nonce-named per call, and __bu_* names are popped from
   the persistent namespace after the call (the runner catches BaseException,
   so cleanup always executes; a user's own __bu_run variable is untouched).
-  Verified by new Python-executed tests.
+  Verified by new Python-executed tests. Accepted residual (post-1.0
+  polish): __bu_b/__bu_sys/__bu_tb are fixed adapter-private names —
+  pre-existing agent values under those exact names are overwritten and
+  removed, not restored.
 - P2: input-bound wording made precise — 128 KiB applies to the
   agent-provided source; the dispatched wrapped payload carries its own
   1 MiB defense-in-depth cap (worst-case JSON escaping of in-bounds source

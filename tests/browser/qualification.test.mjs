@@ -200,11 +200,12 @@ print(str(page_info())[:300])
       // demanded interactive approval, OR another browser's persisted
       // debugging state made the harness dial a stale endpoint with every
       // browser closed. Valuable as an AUXILIARY §84-flow observation, but
-      // never a cold-start PASS.
-      t.skip(
-        `INCONCLUSIVE for cold-start: the harness reached an approval-flow/endpoint state (external browser restart, or stale endpoint metadata from another qualified browser) that does not prove cold-start behavior — recorded as auxiliary §84 evidence`,
+      // never a cold-start PASS — and for a SELECTED scenario it must exit
+      // NON-ZERO: a green qualification job must mean the contract was
+      // proved (t.skip here would let CI show success without evidence).
+      assert.fail(
+        `QUALIFICATION-INCONCLUSIVE (selected scenario): the harness reached an approval-flow/endpoint state (external browser restart, or stale endpoint metadata from another qualified browser) that does not prove cold-start behavior — recorded as auxiliary §84 evidence; re-run on a controlled machine`,
       );
-      return;
     } else if (debugging.state === "enabled") {
       // Outcome A (prerequisite ON): browser must have STAYED cold and the
       // harness must have reported its own diagnostic. Observed Windows

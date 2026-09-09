@@ -9,6 +9,21 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Qualification runner audit semantics + workflow browser selector (2026-09-09)
+
+- P1: a SELECTED scenario that goes INCONCLUSIVE mid-run now fails with a
+  QUALIFICATION-INCONCLUSIVE assert instead of t.skip — a green
+  qualification job always means the contract was proved (previously the
+  process could exit 0 on an inconclusive selected scenario, letting a
+  manual CI job show success without evidence). Skip remains only for
+  not-selected scenarios.
+- P1: workflow_dispatch gains a qualification-browser choice
+  (chrome|chromium|edge, default chrome) wired to
+  BROWSER_USE_QUALIFICATION_BROWSER; the job name shows browser /
+  scenario. Required for the upcoming Chromium matrix runs.
+- P2: qualification-evidence pending checklist synced with the matrix
+  (Chrome required matrix checked complete; Chromium/macOS/Linux remain).
+
 ### Chrome required matrix complete on Windows 11 (2026-09-09)
 
 - remote-debugging-disabled PASS (chrome): §84 flow-trigger evidence within

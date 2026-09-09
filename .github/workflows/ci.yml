@@ -17,6 +17,14 @@ on:
           - existing-browser
           - cold-start
           - remote-debugging-disabled
+      qualification-browser:
+        description: "Target browser this run qualifies (identity-isolated)"
+        type: choice
+        default: chrome
+        options:
+          - chrome
+          - chromium
+          - edge
 
 permissions:
   contents: read
@@ -83,7 +91,7 @@ jobs:
   # machine accordingly (e.g. quit Chrome for cold-start, disable remote
   # debugging for remote-debugging-disabled).
   browser-qualification:
-    name: browser qualification — ${{ inputs.qualification-scenario || 'existing-browser' }}
+    name: browser qualification — ${{ inputs.qualification-browser || 'chrome' }} / ${{ inputs.qualification-scenario || 'existing-browser' }}
     runs-on: [self-hosted, chrome]
     if: github.event_name == 'workflow_dispatch'
     steps:
@@ -102,4 +110,5 @@ jobs:
           BROWSER_USE_BROWSER_TESTS: "1"
           BROWSER_USE_QUALIFICATION: "1"
           BROWSER_USE_QUALIFICATION_SCENARIO: ${{ inputs.qualification-scenario || 'existing-browser' }}
+          BROWSER_USE_QUALIFICATION_BROWSER: ${{ inputs.qualification-browser || 'chrome' }}
         run: node --test

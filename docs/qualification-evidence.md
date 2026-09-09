@@ -201,20 +201,20 @@ remote-debugging-disabled.
 
 ## Pending evidence required for 1.0.0 release
 
-- [x] cold-start prerequisite-on — **PASS 2026-09-09 (Edge) via the
-      `chrome-not-running` diagnostic contract**; the launch-automation path
-      itself remains unqualified (not observed on Windows).
-- [ ] remote-debugging-disabled PASS on a machine with debugging disabled
-      (flow-trigger evidence; optionally interactive completion via
-      `BROWSER_USE_QUALIFICATION_APPROVE=1`).
-- [ ] **Google Chrome + Chromium qualification runs — REQUIRED (frozen V1
-      scope, not optional)**: existing-browser / cold-start both branches /
-      real OK+ERR paths on Chrome and on Chromium before Gate 1 can close.
-      Requires enabling remote debugging in Google Chrome (machine owner's
-      decision) and a Chromium install.
-- [x] Reference-host real-runtime test on an attachable browser — **PASS
-      2026-09-09 (Edge)**: real OK-sentinel success path and real
-      user-code-exception path both verified (fake transports plus this
-      machine's earlier pre-exec branch already covered the rest).
+- [x] **Google Chrome / Windows 11 required matrix — PASS 2026-09-09**:
+      existing-browser; cold-start prerequisite-off (current-SHA re-proof)
+      and prerequisite-on; real OK/ERR sentinel paths;
+      remote-debugging-disabled.
+- [x] **Microsoft Edge / Windows 11 additional qualification — PASS
+      2026-09-09**: existing-browser; cold-start prerequisite-on
+      (`chrome-not-running` diagnostic); real OK/ERR sentinel paths.
+- [ ] **Chromium required matrix** (frozen V1 scope): all five scenarios on a
+      Chromium install. A dedicated machine/profile is strongly recommended —
+      Chrome closed with its flag off, Edge closed with its flag off, only
+      Chromium participating — to sidestep the Windows chrome.exe name
+      ambiguity between Chrome and Chromium.
 - [ ] macOS qualification incl. the mac-approve product-diagnostics path (§63).
-- [ ] OS matrix coverage for the platforms the release claims.
+- [ ] Linux, per the claimed platform matrix.
+- Note: the launch-automation cold-start path remains unqualified everywhere
+      (never observed on Windows; only provable where a harness launch
+      actually occurs).

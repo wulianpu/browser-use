@@ -32,9 +32,10 @@ Microsoft Edge):
   re-proof) + ON; real OK/ERR sentinel paths (strict mode verified);
   remote-debugging-disabled (§84 flow-trigger evidence); browser smoke.
 - PASS — Windows 11 / Chromium (frozen-scope REQUIRED browser) — full
-  required matrix in a dedicated environment (Chrome/Edge closed with
-  flags off): existing-browser; cold-start OFF + ON; real OK/ERR
-  sentinel paths (strict mode); browser smoke.
+  required matrix (all six families) in a dedicated environment
+  (Chrome/Edge closed with flags off): existing-browser; cold-start
+  OFF + ON; real OK/ERR sentinel paths (strict mode); browser smoke;
+  remote-debugging-disabled.
 - PASS — Windows 11 / Edge (ADDITIONAL qualified browser, owner-approved
   2026-09-09): existing-browser; cold-start ON; real OK/ERR paths.
   Launch-automation not observed on Windows for any browser.
@@ -44,8 +45,6 @@ Microsoft Edge):
   workflow_dispatch qualification runs (currently 0; all evidence is
   local controlled runs with reproduction commands).
 - Evidence type: local controlled runs recorded above (with reproduction
-  commands and per-target browser identity); GitHub workflow_dispatch
-  qualification runs: 0. local controlled runs recorded above (with reproduction
   commands and per-target browser identity); GitHub workflow_dispatch
   qualification runs: 0.
 

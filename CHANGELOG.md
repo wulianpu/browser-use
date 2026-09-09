@@ -9,6 +9,22 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Chromium remote-debugging-disabled PASS; evidence-completeness fix (2026-09-09)
+
+- Review correction: the previous entry claimed 'all five scenarios /
+  required matrix complete' while remote-debugging-disabled was still
+  missing from the Chromium runs. It has now been run and PASSED in the
+  same dedicated environment (flag determined-disabled, no endpoint, no
+  interference; official permission/diagnostic flow triggered within the
+  bounded window) — the Chromium Windows-11 matrix is complete across
+  all six families.
+- Operational finding #8: killed MCP hosts orphan browser_harness.daemon
+  processes; 42 accumulated over the day until a new MCP host could not
+  spawn (exit code 2 with no daemon log). Cleanup restored spawning;
+  hosts must track/stop daemons on long-lived machines.
+- release-evidence.md: removed a duplicated evidence-type block left by
+  an earlier edit.
+
 ### Chromium required matrix PASS (2026-09-09)
 
 - Dedicated-environment qualification on Windows 11 (Chromium 152 via

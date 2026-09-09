@@ -1,5 +1,12 @@
 # Browser Qualification Evidence
 
+8. **Killed MCP hosts orphan harness daemons** (2026-09-09): every runtime
+   start spawns a browser_harness.daemon scoped to that run's BH_HOME;
+   killing the MCP host does not stop it. 42 orphans accumulated over a
+   day of qualification runs until a new MCP host could not spawn (exit
+   code 2, no daemon log). Hosts must track and stop daemons (or reuse one
+   BH_HOME per task family) on long-lived machines.
+
 Running record of real qualification runs (§81-§84). A scenario counts as
 qualified only with a dated PASS entry on the target platform. No page URLs or
 tab contents are recorded here (§73).
@@ -13,7 +20,7 @@ tab contents are recorded here (§73).
 | cold-start (prerequisite on) | **PASS 2026-09-09 — Edge** (`chrome-not-running`); **PASS 2026-09-09 — Chrome** (instance-level diagnostic); **PASS 2026-09-09 — Chromium** (instance-level diagnostic) — browser stays cold in all; launch-automation not observed on Windows | — | — |
 | real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** (strict mode: live endpoint + genuine OK/ERR) | — | — |
 | browser smoke (§81 full interaction suite) | **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** (both identity-preflighted) | — | — |
-| remote-debugging-disabled | **PASS 2026-09-09 — Google Chrome** (flow-trigger evidence within the bounded window) | — | — |
+| remote-debugging-disabled | **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** (flow-trigger evidence within the bounded window) | — | — |
 
 Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
 Chromium are the REQUIRED qualification matrix** — their evidence is pending
@@ -219,8 +226,19 @@ Results (all target-scoped, identity-guarded):
   flag on; browser stayed cold (0 processes before/after); instance-level
   diagnostic in the daemon log.
 
-With this, the Windows-11 required matrix is complete for BOTH frozen-scope
-browsers (Google Chrome and Chromium) plus the Edge additional coverage.
+- **remote-debugging-disabled PASS** (added after review — the initial
+  round mistakenly claimed matrix completion without it): Chromium running
+  with the flag determined-disabled, no endpoint, no interference; the
+  fired browser action entered the official permission/diagnostic flow and
+  evidence surfaced within the bounded window. The first attempt failed
+  because 42 orphaned browser_harness.daemon processes accumulated from the
+  day's runs had exhausted spawn capacity (the MCP host exited code 2
+  before any daemon log existed); after killing the orphans the scenario
+  passed cleanly.
+
+With this, the Windows-11 required matrix is genuinely complete for BOTH
+frozen-scope browsers (Google Chrome and Chromium) across all six scenario
+families, plus the Edge additional coverage.
 
 ## Behavioral findings for Hosts (from qualification)
 

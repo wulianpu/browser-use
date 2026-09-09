@@ -9,6 +9,27 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Chrome core matrix PASS + endpoint attribution by process owner (2026-09-09)
+
+- Google Chrome (frozen-scope required browser) core paths qualified on
+  Windows 11: existing-browser (tab preservation; pre-existing tab seeded
+  because a fresh instance only had chrome://newtab), cold-start
+  prerequisite-on (browser stays cold + the harness's instance-level
+  "remote debugging is turned off for this browser instance" diagnostic,
+  two consistent runs), and real OK/ERR sentinel paths (reference-host
+  15/15 on Chrome).
+- Evidence-driven probe fix: modern Chrome returns HTTP 404 for
+  /json/version, and a stale DevToolsActivePort file can name a port now
+  owned by ANOTHER browser — endpoint attribution now resolves the
+  LISTENING socket's owning process (netstat → PID → image), correctly
+  crediting 9222 to chrome.exe and rejecting Edge's stale file.
+- Behavioral finding #6 recorded: remote-debugging approval is per-instance
+  and interactive — first attach waits for the human Allow click (our first
+  attempt expired its 180 s budget mid-approval); a cold browser reports
+  the instance-turned-off notice even with the Local State flag enabled.
+- Remaining for Gate 1: Chrome-targeted cold-start OFF re-proof at current
+  SHA, Chromium matrix, remote-debugging-disabled, macOS/Linux.
+
 ### Qualification identity isolation + cold-start tightening (2026-09-09, post-review)
 
 - Browser identity is now targeted, not aggregated:

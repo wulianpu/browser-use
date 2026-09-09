@@ -114,7 +114,25 @@ export function remoteDebuggingState(target = null) {
 }
 
 // Live DevToolsActivePort endpoint for the target (or the first live one
-// across qualified browsers when no target is given).
+// across qualified browsers when no target is given). Attribution is by the
+// LISTENING socket's owning process: a DevToolsActivePort file only counts
+// when the port it names is actually listened to by THAT browser's process.
+// This defeats stale files (observed 2026-09-09: Edge's leftover file said
+// 9222 while Chrome was listening on 9222). Modern Chrome no longer serves
+// /json/version (HTTP 404), so process ownership is the reliable signal.
+// Known limitation: on Windows, Chrome and Chromium both run as chrome.exe —
+// process ownership separates Edge from the chrome family, and the profile-dir
+// association carries chrome-vs-chromium (dedicated machine for full rigor).
+const LISTENER_IMAGE_TO_BROWSER = {
+  "chrome.exe": ["chrome", "chromium"],
+  "chrome": ["chrome", "chromium"],
+  "google chrome": ["chrome"],
+  "chromium": ["chromium"],
+  "msedge.exe": ["edge"],
+  "msedge": ["edge"],
+  "microsoft edge": ["edge"],
+};
+
 export async function activeDevToolsEndpoint(target = null) {
   for (const key of targetsOf(target)) {
     const dir = dataDirFor(key);
@@ -127,11 +145,38 @@ export async function activeDevToolsEndpoint(target = null) {
     } catch {
       continue;
     }
-    if (Number.isInteger(port) && port > 0 && (await tcpPortOpen(port))) {
-      return { port, browser: key, dir };
-    }
+    if (!Number.isInteger(port) || port <= 0 || !(await tcpPortOpen(port))) continue;
+    const owner = await listeningPortOwnerImage(port);
+    if (!owner) continue;
+    const attributed = LISTENER_IMAGE_TO_BROWSER[owner.toLowerCase()] ?? [];
+    if (!attributed.includes(key)) continue;
+    return { port, browser: key, dir, ownerProcess: owner };
   }
   return null;
+}
+
+// The image name of the process LISTENING on the given local port, or null.
+function listeningPortOwnerImage(port) {
+  if (process.platform === "win32") {
+    const stats = spawnSync("netstat", ["-ano", "-p", "tcp"], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+    const pids = new Set();
+    for (const line of (stats.stdout ?? "").split("\n")) {
+      const match = line.trim().match(new RegExp(`^TCP\\s+\\S+:${port}\\s+\\S+\\s+LISTENING\\s+(\\d+)$`, "i"));
+      if (match) pids.add(match[1]);
+    }
+    if (pids.size === 0) return null;
+    for (const pid of pids) {
+      const task = spawnSync("tasklist", ["/FI", `PID eq ${pid}`, "/NH"], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+      const image = (task.stdout ?? "").trim().split(/\s+/)[0];
+      if (image && image !== "信息:" && !image.startsWith("INFO:")) return image;
+    }
+    return null;
+  }
+  const lsof = spawnSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fp"], { encoding: "utf8", timeout: 15_000 });
+  const pid = (lsof.stdout ?? "").split("\n").find((l) => l.startsWith("p"));
+  if (!pid) return null;
+  const ps = spawnSync("ps", ["-p", pid.slice(1), "-o", "comm="], { encoding: "utf8", timeout: 15_000 });
+  return (ps.stdout ?? "").trim() || null;
 }
 
 // Identity guard: nothing about ANOTHER qualified browser may redirect the

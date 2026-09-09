@@ -8,11 +8,11 @@ tab contents are recorded here (§73).
 
 | Scenario | Windows 11 | macOS | Linux |
 | --- | --- | --- | --- |
-| existing-browser | **PASS 2026-09-09 — Microsoft Edge** (Google-Chrome run pending) | — | — |
-| cold-start (prerequisite off) | **PASS 2026-09-08** | — | — |
-| cold-start (prerequisite on) | **PASS 2026-09-09 — Microsoft Edge, via the `chrome-not-running` diagnostic contract** (launch-automation NOT observed on Windows; launch path unqualified) | — | — |
-| remote-debugging-disabled | PENDING — needs a machine with debugging disabled (this machine now has it enabled) | — | — |
-| real OK / ERR sentinel paths | **PASS 2026-09-09 — Microsoft Edge** | — | — |
+| existing-browser | **PASS 2026-09-09 — Microsoft Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
+| cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; Chrome-targeted re-proof at current SHA PENDING | — | — |
+| cold-start (prerequisite on) | **PASS 2026-09-09 — Edge via `chrome-not-running` diagnostic**; **PASS 2026-09-09 — Chrome via instance-level `remote debugging is turned off` diagnostic** (browser stays cold in both; launch-automation not observed on Windows) | — | — |
+| real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
+| remote-debugging-disabled | PENDING — needs a debugging-disabled target browser running | — | — |
 
 Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
 Chromium are the REQUIRED qualification matrix** — their evidence is pending
@@ -115,6 +115,31 @@ the Chrome/Chromium matrix.
   machine). The identity guard now rejects this interference upfront
   (`enabled-flag` kind) instead of failing mid-run.
 
+### 2026-09-09 — Google Chrome core matrix (Windows 11, browser-use 0.13.10)
+
+- **existing-browser PASS** (`BROWSER_USE_QUALIFICATION_BROWSER=chrome`):
+  Chrome freshly launched with the flag on; the first attach entered the
+  interactive approval handshake and exceeded the 180 s call budget until the
+  user clicked Allow (recorded below as finding #6); after approval, the run
+  attached Google Chrome, preserved the pre-existing tab (seeded — a fresh
+  Chrome instance only had chrome://newtab, which carries no http URL),
+  created and closed only its own task tab.
+- **cold-start prerequisite-ON PASS**: Chrome gracefully closed (clean
+  shutdown removed its DevToolsActivePort), flag still enabled, no
+  interference. The browser stayed cold (0 processes before and after) and
+  the daemon log carried `fatal: remote debugging is turned off for this
+  browser instance — enable chrome://inspect/#remote-debugging (tick "Allow
+  remote debugging for this browser instance")` — the instance-level notice
+  (finding #6). Two consistent runs.
+- **real OK/ERR sentinel paths PASS**: reference-host suite 15/15 with the
+  real-runtime test on Google Chrome — success branch ok:true with computed
+  output; raise branch ERR sentinel → user-code-exception → unknown-effects.
+- Endpoint attribution fix (evidence-driven): modern Chrome serves HTTP 404
+  for /json/version, and Edge's stale DevToolsActivePort file named the port
+  Chrome was listening on — attribution is now by the LISTENING socket's
+  owning process (netstat → PID → image), which correctly credited 9222 to
+  chrome.exe and null to Edge's stale file.
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
@@ -140,6 +165,16 @@ the Chrome/Chromium matrix.
    surface an approval-flow error during a chrome-targeted run. Identity
    isolation must reject competing browsers by live endpoint AND by persisted
    enabled flag.
+6. **Remote-debugging approval is per-instance and interactive** (2026-09-09,
+   Chrome): the Local State `user-enabled` flag arms the browser, but the
+   FIRST attach after launch enters `handshake-wait` until a human clicks
+   Allow — the harness waits indefinitely, so client-side call budgets expire
+   first (our first existing-browser attempt timed out at 180 s mid-approval).
+   A COLD browser reports `remote debugging is turned off for this browser
+   instance` even with the flag on: the per-instance approval only exists in
+   a running browser. Hosts must budget for the interactive approval on first
+   attach (or drive it via the §84 flow) and treat cold+flag-on as the
+   instance-level diagnostic, not as attachable.
 
 ## Pending evidence required for 1.0.0 release
 

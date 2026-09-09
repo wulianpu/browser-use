@@ -207,10 +207,19 @@ print(str(page_info())[:300])
       return;
     } else if (debugging.state === "enabled") {
       // Outcome A (prerequisite ON): browser must have STAYED cold and the
-      // harness must have reported its not-running diagnostic.
+      // harness must have reported its own diagnostic. Observed Windows
+      // vocabulary (docs/qualification-evidence.md): Edge cold →
+      // chrome-not-running; Chrome cold → "remote debugging is turned off for
+      // this browser instance" (the per-instance approval only exists in a
+      // RUNNING browser; a cold one reports this bounded actionable notice).
       assert.ok(
-        browserStillCold && inTextOrLog(/chrome-not-running|start Chrome/i, /chrome-not-running|start Chrome/i, info),
-        "prerequisite ON, browser not running: PASS requires the browser to remain cold AND the chrome-not-running diagnostic (tool text or daemon log)",
+        browserStillCold &&
+          inTextOrLog(
+            /chrome-not-running|start Chrome|remote debugging is turned off|for this browser instance/i,
+            /chrome-not-running|start Chrome|remote debugging is turned off/i,
+            info,
+          ),
+        "prerequisite ON, browser not running: PASS requires the browser to remain cold AND its diagnostic (chrome-not-running, or the instance-level remote-debugging-turned-off notice)",
       );
     } else {
       // Outcome A (prerequisite OFF): observed 2026-09-08 — daemon fails, tool

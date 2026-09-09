@@ -12,6 +12,7 @@ tab contents are recorded here (§73).
 | cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; **PASS 2026-09-09 — Chrome-targeted re-proof at current SHA** (browser stayed cold; daemon-failure tool text + instance-level enable-chrome://inspect diagnostic in the log) | — | — |
 | cold-start (prerequisite on) | **PASS 2026-09-09 — Edge via `chrome-not-running` diagnostic**; **PASS 2026-09-09 — Chrome via instance-level `remote debugging is turned off` diagnostic** (browser stays cold in both; launch-automation not observed on Windows) | — | — |
 | real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
+| browser smoke (§81 full interaction suite) | **PASS 2026-09-09 — Google Chrome** (identity-preflighted) | — | — |
 | remote-debugging-disabled | **PASS 2026-09-09 — Google Chrome** (flow-trigger evidence within the bounded window) | — | — |
 
 Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
@@ -163,6 +164,23 @@ remote-debugging-disabled.
   owning process (netstat → PID → image), which correctly credited 9222 to
   chrome.exe and null to Edge's stale file.
 
+### 2026-09-09 — browser smoke PASS (Google Chrome, Windows 11, browser-use 0.13.10)
+
+- Command: `BROWSER_USE_BROWSER_TESTS=1 BROWSER_USE_QUALIFICATION_BROWSER=chrome node tests/browser/smoke.test.mjs`
+  (target identity preflight: Chrome running, flag enabled, 9222 endpoint
+  attributed to chrome.exe by listening-process ownership, no interference).
+- Result: **PASS** — navigation (example.com + local fixture), filtered AX
+  observation, click/type/press with effect verification in page state,
+  scroll, `browser_screenshot` image content, and task-tab cleanup with
+  pre-existing tab preservation.
+- Getting there surfaced two real qualification findings (see #7): the first
+  two attempts failed honestly — coordinate clicks did nothing on the
+  HIDDEN attached tab (degraded hit-testing, raw input stalled at the
+  daemon), and the scroll step first used raw CDP without settle, then the
+  wrong dy sign. Fixed by following the upstream-documented rules
+  (activate-if-hidden + settle; use the harness `scroll()` helper with the
+  observed POSITIVE-dy-scrolls-down convention).
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
@@ -198,6 +216,15 @@ remote-debugging-disabled.
    a running browser. Hosts must budget for the interactive approval on first
    attach (or drive it via the §84 flow) and treat cold+flag-on as the
    instance-level diagnostic, not as attachable.
+7. **Hidden attached tabs degrade input, not JS** (2026-09-09, Chrome): while
+   the attached tab is backgrounded (visibilityState hidden), `js()` and
+   `type_text` work but coordinate clicks silently miss (hit-testing
+   degraded — `elementFromPoint` returned BODY over a visible button) and raw
+   `Input.dispatchMouseEvent` stalled 5 s at the daemon. `activate_tab()` plus
+   a short settle restores full input (float and int coordinates both land).
+   Also: the harness `scroll(x, y, dy=...)` helper uses the CDP wheel
+   convention — POSITIVE dy scrolls DOWN (dy=-300 moved scrollY 600→300) —
+   and `page_info()` exposes viewport dims as `w`/`h`, not nested objects.
 
 ## Pending evidence required for 1.0.0 release
 
@@ -205,10 +232,11 @@ remote-debugging-disabled.
       existing-browser; cold-start prerequisite-off (current-SHA re-proof)
       and prerequisite-on; real OK/ERR sentinel paths;
       remote-debugging-disabled.
-- [ ] **Browser smoke dated PASS** — Google Chrome / Windows 11 (suite:
-      `tests/browser/smoke.test.mjs` — navigation, AX observation,
-      click/type/press/scroll, screenshot, task-tab cleanup; needs an
-      attachable target) and, later, Chromium on its dedicated environment.
+- [x] **Browser smoke dated PASS — Google Chrome / Windows 11, PASS
+      2026-09-09** (navigation, AX observation, click/type/press with effect
+      verification, scroll, screenshot via the image tool, task-tab cleanup
+      with pre-existing tab preservation; run with the target identity
+      preflight). Chromium smoke remains part of the Chromium matrix below.
 - [x] **Microsoft Edge / Windows 11 additional qualification — PASS
       2026-09-09**: existing-browser; cold-start prerequisite-on
       (`chrome-not-running` diagnostic); real OK/ERR sentinel paths.

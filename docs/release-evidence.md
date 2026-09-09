@@ -32,7 +32,8 @@ Microsoft Edge):
   cold-start prerequisite-off (current-SHA re-proof; browser stays cold,
   bounded actionable diagnostic) and prerequisite-on (instance-level
   diagnostic contract); real OK/ERR sentinel paths;
-  remote-debugging-disabled (§84 flow-trigger evidence).
+  remote-debugging-disabled (§84 flow-trigger evidence);
+  **browser smoke** (§81 full interaction suite, identity-preflighted).
 - PASS — Windows 11 / Edge (ADDITIONAL qualified browser, owner-approved
   2026-09-09): existing-browser; real OK/ERR sentinel paths; cold-start
   prerequisite-on via the `chrome-not-running` diagnostic contract.

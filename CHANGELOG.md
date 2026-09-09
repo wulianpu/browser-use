@@ -9,6 +9,23 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Chrome browser smoke PASS; hidden-tab input findings (2026-09-09)
+
+- Browser smoke dated PASS for Google Chrome / Windows 11
+  (identity-preflighted run: navigation, filtered AX observation,
+  click/type/press with effect verification, scroll, screenshot image
+  tool, task-tab cleanup with pre-existing tab preservation).
+- Two honest failures preceded the PASS and produced behavioral finding
+  #7: on a HIDDEN attached tab, js()/type_text work but coordinate clicks
+  silently miss (hit-testing degraded — elementFromPoint returned BODY
+  over a visible button) and raw Input.dispatchMouseEvent stalls at the
+  daemon; activate_tab() + a short settle restores full input. Also
+  recorded: the harness scroll(x, y, dy) helper uses the CDP convention
+  (POSITIVE dy scrolls down) and page_info() exposes viewport dims as
+  w/h. The smoke now activates-if-hidden with a settle and uses the
+  official scroll() helper; SKILL.md's background-throttling bullet
+  generalized from scroll to coordinate clicks/raw input.
+
 ### Workflow YAML fix + follow-up target attribution (2026-09-09, post-review)
 
 - P0: the dynamic runner label broke YAML parsing (unquoted ${{ }} inside

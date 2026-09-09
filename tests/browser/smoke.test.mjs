@@ -93,6 +93,20 @@ test("browser smoke: navigation, AX observation, input, screenshot (§81)", asyn
     await exec('new_tab("https://example.com")\nprint(wait_for_load())\nprint(page_info())');
     await exec(`goto_url(${JSON.stringify(fixture.url)})\nprint(wait_for_load())\ninfo = page_info()\nprint(str(info)[:400])`);
 
+    // Background tabs throttle input (upstream-documented, qualified
+    // 2026-09-09): the attached tab may be hidden while the user's own tab is
+    // in the foreground — hit-testing degrades (elementFromPoint misses the
+    // target) and coordinate clicks / raw CDP input stall. Activate the task
+    // tab and let layout settle before any coordinate interaction (§52 allows
+    // activation exactly when background throttling breaks operations).
+    await exec(`
+if js("document.visibilityState") == "hidden":
+    activate_tab(current_tab())
+    import time
+    time.sleep(1.0)
+print("visibility:", js("document.visibilityState"))
+`);
+
     // §47: AX tree first, filtered in Python, never dumped raw (§48).
     const axProbe = await exec(`
 nodes = cdp("Accessibility.getFullAXTree")["nodes"]
@@ -134,20 +148,22 @@ print("after_press:", js("JSON.stringify(window.__state)"))
 `);
     assert.ok(/"entered":\s*[1-9]/.test(pressed), "Enter key press reached the page");
 
-    // Scroll: raw CDP wheel event at viewport center; page is 3000px tall.
+    // Scroll: the harness's own scroll(x, y, dy) helper (upstream-documented
+    // surface). Observed 2026-09-09: POSITIVE dy scrolls down (dy=-300 moved
+    // scrollY from 600 up to 300) — CDP wheel convention. Short settle so the
+    // page's scroll listener lands before we read state. (page_info exposes
+    // viewport dims as w/h.)
     const scrolled = await exec(`
 info = page_info()
-width = 800
-height = 600
-try:
-    width = int(info.get("viewport", {}).get("width", 800)) if isinstance(info, dict) else 800
-    height = int(info.get("viewport", {}).get("height", 600)) if isinstance(info, dict) else 600
-except Exception:
-    pass
-cdp("Input.dispatchMouseEvent", type="mouseWheel", x=width / 2, y=height / 2, deltaX=0, deltaY=600)
+w = int(info.get("w", 800)) if isinstance(info, dict) else 800
+h = int(info.get("h", 600)) if isinstance(info, dict) else 600
+print("ret:", scroll(w // 2, h // 2, dy=600))
+import time
+time.sleep(0.5)
+print("scrollY:", js("window.scrollY"))
 print("after_scroll:", js("JSON.stringify(window.__state)"))
 `);
-    assert.ok(/"scrolled":\s*1/.test(scrolled), "scroll moved the page");
+    assert.ok(/"scrolled":\s*1/.test(scrolled), "scroll moved the page: " + scrolled.slice(-200));
 
     // §49: screenshot through the dedicated image tool, never via exec base64.
     const shot = await runtime.client.callTool("browser_screenshot", { max_dim: 1800 }, 60_000);

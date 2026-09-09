@@ -51,7 +51,7 @@ Key usage facts:
 - Keep one working tab per task/site. Before opening another, inspect `current_tab()` and `list_tabs()` and use `switch_tab()` to reuse a matching tab. Do not leave duplicate tabs on the same URL.
 - Do not close tabs you did not create in this task.
 - Tabs work in the background by default; this plugin runs with `BH_TAB_MARKER=0`, so page titles are never modified.
-- If a timed-out `scroll(...)` on an attached background tab suggests the page pauses rendering while hidden: call `activate_tab(current_tab())`, retry the same scroll once, then re-read the scroll position. This visibly switches tabs — only do it when the user allows foreground changes. Do not invent a `Runtime.evaluate` scroll replacement.
+- If a timed-out `scroll(...)` on an attached background tab suggests the page pauses rendering while hidden: call `activate_tab(current_tab())`, retry the same scroll once, then re-read the scroll position. This visibly switches tabs — only do it when the user allows foreground changes. Do not invent a `Runtime.evaluate` scroll replacement. The same applies to coordinate clicks and raw input on hidden tabs: hit-testing degrades (`elementFromPoint` misses the target) and dispatches may stall — activate and let layout settle before coordinate interaction.
 - Raw CDP is available as `cdp("Domain.method", ...)`.
 
 ## Page Workflow

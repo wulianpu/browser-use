@@ -60,11 +60,14 @@ export function uvxAvailable() {
 //   BROWSER_USE_BROWSER_TESTS=1     → opt in to tests that call browser_exec / drive real Chrome (§35)
 //   BROWSER_USE_QUALIFICATION=1     → opt in to interactive qualification scenarios
 //   BROWSER_USE_QUALIFICATION_SCENARIO → existing-browser | cold-start | remote-debugging-disabled
+//   BROWSER_USE_QUALIFICATION_BROWSER → chrome | chromium | edge — the browser this run
+//                                      qualifies; probes and identity guards are target-specific
 export const RUNTIME_GATES = Object.freeze({
   skipRuntime: process.env.BROWSER_USE_SKIP_RUNTIME === "1",
   browserTests: process.env.BROWSER_USE_BROWSER_TESTS === "1",
   qualification: process.env.BROWSER_USE_QUALIFICATION === "1",
   qualificationScenario: process.env.BROWSER_USE_QUALIFICATION_SCENARIO || "existing-browser",
+  qualificationBrowser: process.env.BROWSER_USE_QUALIFICATION_BROWSER || "chrome",
 });
 
 export function requireRuntimeOrSkip(t) {

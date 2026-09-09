@@ -9,6 +9,29 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Qualification identity isolation + cold-start tightening (2026-09-09, post-review)
+
+- Browser identity is now targeted, not aggregated:
+  BROWSER_USE_QUALIFICATION_BROWSER selects chrome | chromium | edge; every
+  probe (process / debugging state / endpoint) is evaluated for that browser
+  only, and an identity guard rejects interference from other qualified
+  browsers — live DevTools endpoints (attach theft) AND persisted
+  user-enabled debugging flags. The latter is evidence-backed: with every
+  browser closed, Edge's enabled flag plus its stale DevToolsActivePort file
+  made the harness dial the dead port and surface an approval-flow error
+  during a chrome-targeted run (behavioral finding #5).
+- cold-start qualifying outcomes tightened: PASS requires (A) the browser
+  STAYS cold plus its per-prerequisite diagnostic, or (B) navigation plus
+  harness-log launch attribution (navigation alone cannot credit the launch).
+  Approval-flow outcomes (external/self restart or stale-endpoint metadata)
+  are INCONCLUSIVE, recorded as auxiliary §84 evidence — never a cold-start
+  PASS.
+- Chrome cold-start OFF at the current SHA: first attempt INCONCLUSIVE due
+  to Edge's persisted flag; the re-proof remains pending until Edge's
+  debugging flag is disabled (or a dedicated machine is used).
+- release-evidence.md duplicate line removed; scenario wording is
+  target-specific.
+
 ### Qualification regression fix + scope correction (2026-09-09, post-review)
 
 - P0 regression: the merged cold-start diagnostic contract broke the

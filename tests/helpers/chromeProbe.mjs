@@ -1,120 +1,124 @@
 // Chrome state probes for the qualification scenarios (§82/§83/§84).
 // Preconditions must be asserted BEFORE a scenario claims to prove anything.
 //
-// Remote-debugging state follows what Browser Use itself looks at, not a
-// fixed port guess: the browser profile's "Local State" flag
-// devtools.remote_debugging.user-enabled, plus a live DevToolsActivePort file
-// in the profile root (authoritative while the browser runs).
+// Browser identity is TARGETED, not aggregated: each probe accepts a target
+// browser key ("chrome" | "chromium" | "edge") and evaluates only that
+// browser's processes/profiles/endpoints, plus a competing-endpoint check so
+// another qualified browser cannot silently steal the attach. Without this, a
+// scenario named "Chrome qualification" could attach Edge and record the
+// wrong evidence.
 //
-// Profile discovery covers the V1-qualified browsers: Google Chrome,
-// Chromium, and Microsoft Edge (Edge added by owner decision on 2026-09-09,
-// backed by real qualification runs). Other Chromium-family browsers
-// (Brave etc.) are not probed — they remain outside the qualified scope.
+// Known limitation: on Windows, Chrome and Chromium both run as chrome.exe —
+// process identity alone cannot separate them; the profile/endpoint targeting
+// and the competing-endpoint guard carry the identity, and a dedicated
+// machine remains the clean way to disambiguate chrome vs chromium.
+//
+// Remote-debugging state follows what Browser Use itself looks at: the
+// profile's "Local State" flag devtools.remote_debugging.user-enabled, plus a
+// live DevToolsActivePort in the profile root.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
 import { join } from "node:path";
 
+export const QUALIFICATION_BROWSERS = ["chrome", "chromium", "edge"];
+
 const PROCESS_NAMES = {
-  win32: ["chrome.exe", "msedge.exe"], // Chromium builds also run as chrome.exe
-  darwin: ["Google Chrome", "Chromium", "Microsoft Edge"],
-  linux: ["chrome", "chromium", "chrome-browser", "msedge", "microsoft-edge"],
+  chrome: { win32: ["chrome.exe"], darwin: ["Google Chrome"], linux: ["chrome"] },
+  chromium: { win32: ["chrome.exe"], darwin: ["Chromium"], linux: ["chromium", "chrome-browser"] },
+  edge: { win32: ["msedge.exe"], darwin: ["Microsoft Edge"], linux: ["msedge", "microsoft-edge"] },
 };
 
-export function chromeProcessRunning() {
-  // Best-effort process probe per platform; false negatives on exotic setups
-  // are acceptable (a scenario then fails its precondition loudly).
-  if (process.platform === "win32") {
-    for (const image of PROCESS_NAMES.win32) {
-      const out = spawnSync("tasklist", ["/FI", `IMAGENAME eq ${image}`, "/NH"], {
-        encoding: "utf8",
-        windowsHide: true,
-        timeout: 15_000,
-      });
-      if (new RegExp(image.replace(".", "\\."), "i").test(out.stdout ?? "")) return true;
+function dataDirFor(browser) {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  const perBrowser = {
+    chrome: {
+      win32: process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Google", "Chrome", "User Data") : null,
+      darwin: home ? join(home, "Library", "Application Support", "Google", "Chrome") : null,
+      linux: home ? join(home, ".config", "google-chrome") : null,
+    },
+    chromium: {
+      win32: process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Chromium", "User Data") : null,
+      darwin: home ? join(home, "Library", "Application Support", "Chromium") : null,
+      linux: home ? join(home, ".config", "chromium") : null,
+    },
+    edge: {
+      win32: process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Microsoft", "Edge", "User Data") : null,
+      darwin: home ? join(home, "Library", "Application Support", "Microsoft Edge") : null,
+      linux: home ? join(home, ".config", "microsoft-edge") : null,
+    },
+  };
+  return perBrowser[browser]?.[process.platform] ?? null;
+}
+
+function targetsOf(target) {
+  if (target) return [target];
+  return QUALIFICATION_BROWSERS;
+}
+
+// With a target: is THAT browser's process running? Without: any qualified browser.
+export function chromeProcessRunning(target = null) {
+  // Best-effort probe per platform; false negatives on exotic setups are
+  // acceptable (a scenario then fails its precondition loudly).
+  for (const key of targetsOf(target)) {
+    const names = PROCESS_NAMES[key][process.platform] ?? PROCESS_NAMES[key].linux;
+    if (process.platform === "win32") {
+      for (const image of names) {
+        const out = spawnSync("tasklist", ["/FI", `IMAGENAME eq ${image}`, "/NH"], {
+          encoding: "utf8",
+          windowsHide: true,
+          timeout: 15_000,
+        });
+        if (new RegExp(image.replace(".", "\\."), "i").test(out.stdout ?? "")) return true;
+      }
+    } else {
+      for (const name of names) {
+        const out = spawnSync("pgrep", ["-x", name], { encoding: "utf8", timeout: 15_000 });
+        if (out.status === 0) return true;
+      }
     }
-    return false;
-  }
-  for (const name of PROCESS_NAMES[process.platform] ?? PROCESS_NAMES.linux) {
-    const out = spawnSync("pgrep", ["-x", name], { encoding: "utf8", timeout: 15_000 });
-    if (out.status === 0) return true;
   }
   return false;
 }
 
-// Candidate user-data dirs for the qualified browsers, most preferred first.
-// Returns only dirs that exist on this machine.
-export function chromiumFamilyDataDirs() {
-  const home = process.env.HOME || process.env.USERPROFILE;
-  const perPlatform = {
-    win32: process.env.LOCALAPPDATA
-      ? [
-          ["chrome", join(process.env.LOCALAPPDATA, "Google", "Chrome", "User Data")],
-          ["chromium", join(process.env.LOCALAPPDATA, "Chromium", "User Data")],
-          ["edge", join(process.env.LOCALAPPDATA, "Microsoft", "Edge", "User Data")],
-        ]
-      : [],
-    darwin: home
-      ? [
-          ["chrome", join(home, "Library", "Application Support", "Google", "Chrome")],
-          ["chromium", join(home, "Library", "Application Support", "Chromium")],
-          ["edge", join(home, "Library", "Application Support", "Microsoft Edge")],
-        ]
-      : [],
-    linux: home
-      ? [
-          ["chrome", join(home, ".config", "google-chrome")],
-          ["chromium", join(home, ".config", "chromium")],
-          ["edge", join(home, ".config", "microsoft-edge")],
-        ]
-      : [],
-  };
-  return (perPlatform[process.platform] ?? [])
-    .filter(([, dir]) => existsSync(dir))
-    .map(([browser, dir]) => ({ browser, dir }));
-}
-
-// Remote-debugging state across the qualified browsers' profiles.
-//
-// Tri-state per profile, tri-state overall:
-//   "enabled"  — Local State readable and devtools.remote_debugging["user-enabled"] === true
-//   "disabled" — Local State readable and the flag is false OR absent (Chrome's default is off)
-//   "unknown"  — no qualified profile found, or Local State unreadable
-//
-// The scenario precondition accepts "disabled" only: it must be a determined
-// state, not a guess.
-export function remoteDebuggingState() {
-  const dirs = chromiumFamilyDataDirs();
-  if (dirs.length === 0) return { state: "unknown", reason: "no qualified Chrome/Chromium profile dir found" };
-  let sawUnknown = false;
-  for (const { browser, dir } of dirs) {
-    const localStatePath = join(dir, "Local State");
-    if (!existsSync(localStatePath)) {
-      sawUnknown = true;
+// The Local State flag the chrome://inspect/#remote-debugging flow sets.
+// Tri-state per target: enabled / disabled / unknown (profile missing or
+// unreadable — only a determined state satisfies a scenario precondition).
+export function remoteDebuggingState(target = null) {
+  const evaluated = [];
+  for (const key of targetsOf(target)) {
+    const dir = dataDirFor(key);
+    if (!dir || !existsSync(join(dir, "Local State"))) {
+      evaluated.push({ browser: key, state: "unknown", reason: `no ${key} profile / Local State found` });
       continue;
     }
     let localState;
     try {
-      localState = JSON.parse(readFileSync(localStatePath, "utf8"));
+      localState = JSON.parse(readFileSync(join(dir, "Local State"), "utf8"));
     } catch {
-      sawUnknown = true;
+      evaluated.push({ browser: key, state: "unknown", reason: `${key} Local State unreadable` });
       continue;
     }
     const flag = localState?.devtools?.remote_debugging?.["user-enabled"];
-    if (flag === true) return { state: "enabled", browser, dir };
-    // flag === false, or absent (default off): a determined "disabled" for this profile.
+    evaluated.push({ browser: key, state: flag === true ? "enabled" : "disabled", dir });
   }
-  return sawUnknown
-    ? { state: "unknown", reason: "Local State missing or unreadable in at least one qualified profile" }
-    : { state: "disabled" };
+  if (target) return evaluated[0];
+  if (evaluated.some((e) => e.state === "enabled")) {
+    return evaluated.find((e) => e.state === "enabled");
+  }
+  if (evaluated.some((e) => e.state === "unknown")) {
+    return { state: "unknown", reason: "at least one qualified profile unreadable" };
+  }
+  return { state: "disabled" };
 }
 
-// While a browser runs with debugging active, it writes DevToolsActivePort
-// ("port\npath") into the profile root; the port must actually be listening.
-// Checked across all qualified profiles.
-export async function activeDevToolsEndpoint() {
-  for (const { browser, dir } of chromiumFamilyDataDirs()) {
+// Live DevToolsActivePort endpoint for the target (or the first live one
+// across qualified browsers when no target is given).
+export async function activeDevToolsEndpoint(target = null) {
+  for (const key of targetsOf(target)) {
+    const dir = dataDirFor(key);
+    if (!dir) continue;
     const portFilePath = join(dir, "DevToolsActivePort");
     if (!existsSync(portFilePath)) continue;
     let port;
@@ -124,7 +128,28 @@ export async function activeDevToolsEndpoint() {
       continue;
     }
     if (Number.isInteger(port) && port > 0 && (await tcpPortOpen(port))) {
-      return { port, browser, dir };
+      return { port, browser: key, dir };
+    }
+  }
+  return null;
+}
+
+// Identity guard: nothing about ANOTHER qualified browser may redirect the
+// harness's attach attempt. Two interference forms are both disqualifying
+// (observed 2026-09-09): a live DevTools endpoint (steals the attach), or a
+// persisted user-enabled debugging flag whose stale DevToolsActivePort
+// metadata made the harness dial a dead port and surface an approval-flow
+// error during a chrome-targeted cold-start with every browser closed.
+export async function competingBrowserInterference(target) {
+  const others = QUALIFICATION_BROWSERS.filter((key) => key !== target);
+  for (const key of others) {
+    const endpoint = await activeDevToolsEndpoint(key);
+    if (endpoint) return { kind: "live-endpoint", browser: key, port: endpoint.port };
+  }
+  for (const key of others) {
+    const state = remoteDebuggingState(key);
+    if (state.state === "enabled") {
+      return { kind: "enabled-flag", browser: key };
     }
   }
   return null;

@@ -40,8 +40,8 @@ Microsoft Edge):
   macOS/Linux per claimed matrix (the launch-automation path could only be
   qualified there).
 - Evidence type: local controlled runs recorded above (with reproduction
-  commands); GitHub workflow_dispatch qualification runs: 0.
-- GitHub workflow_dispatch qualification runs: 0.
+  commands and per-target browser identity); GitHub workflow_dispatch
+  qualification runs: 0.
 
 - [ ] All scenarios dated-PASS on the claimed platform matrix.
 

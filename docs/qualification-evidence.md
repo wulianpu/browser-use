@@ -100,6 +100,21 @@ the Chrome/Chromium matrix.
   covers all three observed outcomes (launch / chrome-not-running /
   permission-blocked).
 
+### 2026-09-09 — chrome cold-start OFF attempt at current SHA: INCONCLUSIVE (stale-endpoint contamination)
+
+- Preconditions held at start: Chrome not running, Chrome debugging state
+  determined `disabled`, no live endpoint anywhere. Edge had been gracefully
+  closed but its remote-debugging flag stayed user-enabled.
+- During the run the harness dialed `ws://127.0.0.1:9222` (from Edge's stale
+  DevToolsActivePort metadata) and reported `handshake-wait` → `fatal: CDP WS
+  handshake failed: connection refused -- click Allow in Chrome if prompted`.
+  Process counts stayed 0 for both browsers throughout — nothing restarted.
+- Verdict: INCONCLUSIVE for cold-start (recorded as auxiliary §84-flow
+  evidence), not a Chrome OFF PASS. The current-SHA prerequisite-OFF re-proof
+  remains pending; it requires Edge's debugging flag OFF (or a dedicated
+  machine). The identity guard now rejects this interference upfront
+  (`enabled-flag` kind) instead of failing mid-run.
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
@@ -119,6 +134,12 @@ the Chrome/Chromium matrix.
    themselves. Also: force-killed Edge can self-respawn via startup-boost —
    qualification harnesses must verify the browser stays down before claiming
    a cold-start state.
+5. **Persisted debugging state on ANOTHER browser contaminates targeted runs**
+   (2026-09-09): with every browser closed, Edge's user-enabled flag plus its
+   stale DevToolsActivePort file made the harness dial the dead port and
+   surface an approval-flow error during a chrome-targeted run. Identity
+   isolation must reject competing browsers by live endpoint AND by persisted
+   enabled flag.
 
 ## Pending evidence required for 1.0.0 release
 

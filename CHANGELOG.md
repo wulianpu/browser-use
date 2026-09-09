@@ -9,6 +9,20 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Chrome required matrix complete on Windows 11 (2026-09-09)
+
+- remote-debugging-disabled PASS (chrome): §84 flow-trigger evidence within
+  the bounded window against a running, flag-disabled Chrome — the last
+  unproven scenario family for the required browser.
+- cold-start OFF re-proof at current SHA PASS (chrome): browser stayed
+  cold; bounded actionable diagnostic in tool text and daemon log (now
+  instance-level wording vs the 2026-09-08 profile-scan wording — recorded
+  honestly).
+- Google Chrome required matrix on Windows 11 now complete:
+  existing-browser, cold-start OFF + ON, real OK/ERR sentinel paths,
+  remote-debugging-disabled. Remaining Gate 1: Chromium matrix,
+  macOS/Linux per claimed platform matrix.
+
 ### Chrome core matrix PASS + endpoint attribution by process owner (2026-09-09)
 
 - Google Chrome (frozen-scope required browser) core paths qualified on

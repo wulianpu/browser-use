@@ -9,10 +9,10 @@ tab contents are recorded here (§73).
 | Scenario | Windows 11 | macOS | Linux |
 | --- | --- | --- | --- |
 | existing-browser | **PASS 2026-09-09 — Microsoft Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
-| cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; Chrome-targeted re-proof at current SHA PENDING | — | — |
+| cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; **PASS 2026-09-09 — Chrome-targeted re-proof at current SHA** (browser stayed cold; daemon-failure tool text + instance-level enable-chrome://inspect diagnostic in the log) | — | — |
 | cold-start (prerequisite on) | **PASS 2026-09-09 — Edge via `chrome-not-running` diagnostic**; **PASS 2026-09-09 — Chrome via instance-level `remote debugging is turned off` diagnostic** (browser stays cold in both; launch-automation not observed on Windows) | — | — |
 | real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
-| remote-debugging-disabled | PENDING — needs a debugging-disabled target browser running | — | — |
+| remote-debugging-disabled | **PASS 2026-09-09 — Google Chrome** (flow-trigger evidence within the bounded window) | — | — |
 
 Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
 Chromium are the REQUIRED qualification matrix** — their evidence is pending
@@ -114,6 +114,29 @@ the Chrome/Chromium matrix.
   remains pending; it requires Edge's debugging flag OFF (or a dedicated
   machine). The identity guard now rejects this interference upfront
   (`enabled-flag` kind) instead of failing mid-run.
+
+### 2026-09-09 — Chrome matrix completion: remote-debugging-disabled + cold-start OFF re-proof
+
+- **remote-debugging-disabled PASS (chrome)**: Chrome running with the flag
+  newly disabled (probe-verified determined-disabled), no live endpoint, no
+  interference. The fired browser action entered the official
+  permission/diagnostic flow, and flow-trigger evidence surfaced within the
+  45 s bounded window (MCP stderr / harness state under PLUGIN_DATA); the
+  scenario tore down without zombie waits. §84 flow verified on the
+  required browser.
+- **cold-start OFF re-proof at current SHA PASS (chrome)**: Chrome gracefully
+  closed after the flag was disabled; the browser stayed cold (0 processes
+  before and after) and the failure surfaced bounded and actionable — the
+  tool text carried the daemon-didn't-come-up error pointing at the log,
+  whose diagnostic now reads instance-level (`remote debugging is turned off
+  for this browser instance — enable chrome://inspect/#remote-debugging`)
+  rather than the 2026-09-08 profile-scan wording (`DevToolsActivePort not
+  found in [...]`). Both match the OFF vocabulary (tool text or log); the
+  wording difference is recorded honestly.
+
+With these, the Google-Chrome required matrix on Windows 11 is complete:
+existing-browser, cold-start OFF + ON, real OK/ERR sentinel paths,
+remote-debugging-disabled.
 
 ### 2026-09-09 — Google Chrome core matrix (Windows 11, browser-use 0.13.10)
 

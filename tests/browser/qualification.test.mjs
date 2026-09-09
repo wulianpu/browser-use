@@ -4,9 +4,11 @@
 // Opt-in via BROWSER_USE_QUALIFICATION=1 (implies the browser-test gate).
 // Select the scenario with BROWSER_USE_QUALIFICATION_SCENARIO:
 //
-//   existing-browser          Chrome running with user tabs open (§82)
-//   cold-start                Chrome NOT running; harness must launch it (§83)
-//   remote-debugging-disabled Chrome running without remote debugging (§84)
+//   existing-browser          browser running with user tabs open (§82)
+//   cold-start                browser NOT running; qualify the observed
+//                             platform contract — launch+attach OR the
+//                             bounded actionable diagnostic (§83)
+//   remote-debugging-disabled browser running without remote debugging (§84)
 //
 // Privacy: assertion messages and logs never contain real tab URLs — URLs are
 // compared in memory only (§73). Each scenario closes the tab it creates.
@@ -125,13 +127,14 @@ for name in ("close_tab", "close_current_tab"):
 });
 
 runScenario("cold-start: harness behavior from a not-running browser", async () => {
-  assert.ok(!chromeProcessRunning(), "precondition: Chrome/Chromium must NOT be running for the cold-start scenario (quit browsers first)");
-  // Expected outcome depends on the remote-debugging prerequisite, because the
-  // harness needs an attachable endpoint (observed on Windows with
-  // browser-use 0.13.10 — see docs/qualification-evidence.md):
-  //   flag enabled   → harness launches the browser, attaches, navigates
-  //   flag disabled  → harness does NOT launch; it returns the documented
-  //                    bounded, actionable diagnostic instead
+  assert.ok(!chromeProcessRunning(), "precondition: Chrome/Chromium/Edge must NOT be running for the cold-start scenario (quit browsers first)");
+  // Qualify the OBSERVED platform contract with the browser not running
+  // (Windows / browser-use 0.13.10 — see docs/qualification-evidence.md):
+  //   navigation succeeds  → launch+attach path (not observed on Windows yet)
+  //   flag enabled, failed → bounded `chrome-not-running` / `start Chrome` diagnostic
+  //   flag disabled, failed → bounded `DevToolsActivePort` / `chrome://inspect` diagnostic
+  // Each prerequisite state asserts ITS OWN diagnostic vocabulary — merging
+  // them would break the branch that is currently executable on this machine.
   const debugging = remoteDebuggingState();
   assert.notEqual(
     debugging.state,
@@ -140,29 +143,43 @@ runScenario("cold-start: harness behavior from a not-running browser", async () 
   );
   const runtime = await startRuntime();
   let taskTabCreated = false;
+  const startedAt = Date.now();
   const exec = async (code) => textContent(await runtime.client.callTool("browser_exec", { code }, 240_000));
+  const diagnosticInTextOrLog = (textPattern, logPattern) =>
+    textPattern.test(infoText) ||
+    Boolean(scanHarnessState(join(runtime.pluginData, "browser-harness"), startedAt, logPattern));
+  let infoText = "";
   try {
-    const info = await exec(`
+    infoText = await exec(`
 new_tab("https://example.com")
 print(wait_for_load())
 print(str(page_info())[:300])
 `);
-    // Qualified Windows behavior (2026-09-09, browser-use 0.13.10, Edge with
-    // the debugging flag ON, browser confirmed not running and stable): the
-    // harness does NOT auto-launch — it reports the bounded, actionable
-    // chrome-not-running diagnostic. Launch-automation is accepted as an
-    // alternative outcome for platforms where it is observed; record which
-    // occurred in docs/qualification-evidence.md.
-    if (/example\.com/.test(info)) {
-      taskTabCreated = true;
-    } else {
-      const diagnostic =
-        /chrome-not-running/.test(info) ||
-        (/daemon .*didn'?t come up|DevToolsActivePort|chrome:\/\/inspect|remote.?debugging/i.test(info) &&
-          scanHarnessState(join(runtime.pluginData, "browser-harness"), Date.now() - 300_000, /chrome-not-running|start Chrome/i));
+    if (/example\.com/.test(infoText)) {
+      taskTabCreated = true; // launch+attach path — record the platform in the evidence doc
+    } else if (debugging.state === "enabled") {
+      // Observed Windows outcomes with the flag ON and the browser not
+      // running at call time (docs/qualification-evidence.md):
+      //   2026-09-09 (nothing relaunches)  → chrome-not-running diagnostic
+      //   2026-09-09 (Edge self-relaunches) → handshake-wait → permission-
+      //      blocked: the interactive "Allow remote debugging?" approval was
+      //      not granted; bounded, actionable, no retry
       assert.ok(
-        diagnostic,
-        "from a not-running browser the harness must either launch+attach+navigate, or surface its documented diagnostic (tool text or daemon log)",
+        diagnosticInTextOrLog(
+          /chrome-not-running|start Chrome|handshake-wait|permission-blocked|Allow remote debugging/i,
+          /chrome-not-running|start Chrome|handshake-wait|permission-blocked/i,
+        ),
+        "prerequisite ON, browser not running: the harness must launch+attach+navigate, or reach a bounded actionable state (chrome-not-running diagnostic or the remote-debugging approval flow)",
+      );
+    } else {
+      // Observed 2026-09-08 (flag OFF): daemon fails, tool text points at the
+      // daemon log, which carries the enable-chrome://inspect diagnostic.
+      assert.ok(
+        diagnosticInTextOrLog(
+          /daemon .*didn'?t come up|DevToolsActivePort|chrome:\/\/inspect|remote.?debugging/i,
+          /DevToolsActivePort|chrome:\/\/inspect|remote.?debugging/i,
+        ),
+        "prerequisite OFF, browser not running: the harness must surface its DevToolsActivePort / enable-chrome://inspect diagnostic (tool text or daemon log)",
       );
     }
   } finally {

@@ -11,7 +11,7 @@ Direct browser control via CDP, provided by the official Browser Use runtime (pi
 - `browser_exec` — run Python with Browser Harness helpers preloaded (`page_info()`, `new_tab()`, `cdp(...)`, ...). The Python namespace persists across calls **within one logical task** and is reset between tasks.
 - `browser_screenshot` — capture the current page as an image.
 
-This plugin drives the user's local browser through Browser Use. Browser Use can attach to local Chromium-family browsers (Chrome, Chromium, Edge, and others it discovers, such as Brave); **this plugin's V1 qualification covers Chrome, Chromium, and Microsoft Edge** — other Chromium-family browsers may work but are unqualified here. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
+This plugin drives the user's local browser through Browser Use. Browser Use can attach to local Chromium-family browsers (Chrome, Chromium, Edge, and others it discovers, such as Brave); **the V1 qualification targets are Chrome and Chromium, with Microsoft Edge additionally qualified on Windows 11** — other Chromium-family browsers may work but are unqualified here. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
 
 ## Security classification — read first
 
@@ -99,7 +99,7 @@ Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIM
 
 ## Local browser connection
 
-The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium/Edge qualified for V1; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
+The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium are the V1 qualification targets, Edge additionally qualified on Windows 11; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
 
 - If no supported browser is running, the harness does not launch one (qualified on Windows, browser-use 0.13.10): with the remote-debugging prerequisite satisfied it fails fast with the `chrome-not-running` diagnostic — start the browser, then retry; without the prerequisite the daemon fails with the `enable chrome://inspect/#remote-debugging` diagnostic. Start the browser yourself (or ask the user to), then retry.
 - If Chrome is running but remote debugging is not enabled, the harness opens `chrome://inspect/#remote-debugging`; report this state to the user.

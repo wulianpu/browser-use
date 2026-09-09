@@ -14,10 +14,12 @@ tab contents are recorded here (§73).
 | remote-debugging-disabled | PENDING — needs a machine with debugging disabled (this machine now has it enabled) | — | — |
 | real OK / ERR sentinel paths | **PASS 2026-09-09 — Microsoft Edge** | — | — |
 
-Scope note (2026-09-09): the V1 qualified browser matrix was extended by owner
-decision to include Microsoft Edge (probe covers msedge.exe and the Edge
-profile dir). Google Chrome / Chromium runs remain pending if the release
-claims them.
+Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
+Chromium are the REQUIRED qualification matrix** — their evidence is pending
+and Gate 1 cannot close without it. **Microsoft Edge is an owner-approved
+ADDITIONAL qualified browser on Windows 11** (probe covers msedge.exe and the
+Edge profile dir); Edge runs below are extra coverage, not a substitute for
+the Chrome/Chromium matrix.
 
 ## Run log
 
@@ -87,6 +89,16 @@ claims them.
   the bounded diagnostic. SKILL.md/troubleshooting.md updated to the observed
   behavior; the scenario now asserts launch-or-diagnostic and the evidence
   records which occurred.
+- Additional observed outcome (same day, later run): after a force-kill, Edge
+  self-relaunched with the debugging flag; the harness connected to the 9222
+  endpoint and entered the interactive approval flow — daemon log:
+  `handshake-wait: if Chrome shows an 'Allow remote debugging?' popup, click
+  Allow` → `fatal: permission-blocked: Chrome did not approve the remote
+  debugging connection; browser-harness did not retry or create another
+  connection`. This is the §84 approval path firing for real: bounded,
+  actionable, no silent retry. The cold-start ON assertion vocabulary now
+  covers all three observed outcomes (launch / chrome-not-running /
+  permission-blocked).
 
 ## Behavioral findings for Hosts (from qualification)
 
@@ -116,8 +128,11 @@ claims them.
 - [ ] remote-debugging-disabled PASS on a machine with debugging disabled
       (flow-trigger evidence; optionally interactive completion via
       `BROWSER_USE_QUALIFICATION_APPROVE=1`).
-- [ ] Google Chrome / Chromium qualification runs if the release claims them
-      (requires enabling remote debugging in Google Chrome on this machine).
+- [ ] **Google Chrome + Chromium qualification runs — REQUIRED (frozen V1
+      scope, not optional)**: existing-browser / cold-start both branches /
+      real OK+ERR paths on Chrome and on Chromium before Gate 1 can close.
+      Requires enabling remote debugging in Google Chrome (machine owner's
+      decision) and a Chromium install.
 - [x] Reference-host real-runtime test on an attachable browser — **PASS
       2026-09-09 (Edge)**: real OK-sentinel success path and real
       user-code-exception path both verified (fake transports plus this

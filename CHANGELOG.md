@@ -9,6 +9,28 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Qualification regression fix + scope correction (2026-09-09, post-review)
+
+- P0 regression: the merged cold-start diagnostic contract broke the
+  prerequisite-OFF branch (its diagnostic vocabulary — DevToolsActivePort /
+  enable-chrome://inspect — was gated behind a harness-log match for
+  chrome-not-running, which the OFF path never emits). Restored per-state
+  branches: navigation-success → launch path; flag-enabled failure →
+  chrome-not-running / start Chrome; flag-disabled failure →
+  DevToolsActivePort / chrome://inspect. Each state asserts its own
+  vocabulary; push CI cannot catch this (browser tests skip there).
+- Third observed cold-start-ON outcome recorded: after a force-kill, Edge
+  self-relaunched with the flag and the harness entered the interactive
+  approval flow (handshake-wait → permission-blocked, bounded, no retry) —
+  the §84 approval path firing for real. ON vocabulary widened accordingly.
+- Scope wording corrected to frozen Option A: Google Chrome + Chromium are
+  the REQUIRED qualification matrix (evidence pending; Gate 1 cannot close
+  without them); Microsoft Edge is an owner-approved ADDITIONAL qualified
+  browser on Windows 11 — not a substitute for the Chrome/Chromium matrix.
+  README/SKILL/evidence docs aligned.
+- Stale cold-start comments updated (launch claim → observed platform
+  contract).
+
 ### Qualification progress (2026-09-09)
 
 - Owner decision extended the V1 qualified browser matrix to include

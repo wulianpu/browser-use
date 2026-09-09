@@ -27,12 +27,14 @@ Scenario matrix and run log live in
 (2026-09-09, owner decision extended the qualified matrix to include
 Microsoft Edge):
 
-- PASS — Windows 11 / Edge: existing-browser; real OK/ERR sentinel paths.
+- PASS — Windows 11 / Edge: existing-browser; real OK/ERR sentinel paths;
+  cold-start prerequisite-on (via the `chrome-not-running` diagnostic
+  contract — launch-automation not observed on Windows).
 - PASS — Windows 11 (earlier): cold-start prerequisite-off; real pre-exec
   failure classification.
-- PENDING — cold-start prerequisite-on (needs Edge fully quit);
-  remote-debugging-disabled (needs a debugging-disabled machine);
-  Google-Chrome/Chromium runs if claimed; macOS/Linux per claimed matrix.
+- PENDING — remote-debugging-disabled (needs a debugging-disabled machine);
+  Google-Chrome/Chromium runs if claimed; macOS/Linux per claimed matrix
+  (the launch-automation path could only be qualified there).
 - GitHub workflow_dispatch qualification runs: 0.
 
 - [ ] All scenarios dated-PASS on the claimed platform matrix.

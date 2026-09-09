@@ -101,7 +101,7 @@ Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIM
 
 The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium/Edge qualified for V1; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
 
-- Whether the harness can launch the browser depends on the remote-debugging prerequisite: with it satisfied, the harness launches a not-running browser and retries; without it (no user-enabled remote debugging and no live DevToolsActivePort), nothing is launched — `browser_exec` returns a traceback ending in `daemon didn't come up` pointing at the daemon log, which names the `chrome://inspect/#remote-debugging` step.
+- If no supported browser is running, the harness does not launch one (qualified on Windows, browser-use 0.13.10): with the remote-debugging prerequisite satisfied it fails fast with the `chrome-not-running` diagnostic — start the browser, then retry; without the prerequisite the daemon fails with the `enable chrome://inspect/#remote-debugging` diagnostic. Start the browser yourself (or ask the user to), then retry.
 - If Chrome is running but remote debugging is not enabled, the harness opens `chrome://inspect/#remote-debugging`; report this state to the user.
 - macOS remote-debugging permission (`mac-approve`) is **not** exposed as an agent tool by this plugin. Route it through the host's product diagnostics / user instruction flow.
 - On connection problems, see [references/troubleshooting.md](references/troubleshooting.md).

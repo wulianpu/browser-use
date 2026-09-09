@@ -19,8 +19,16 @@ Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`)
   preserved, compared in memory); real OK-sentinel success and real
   user-code-exception ERR-sentinel paths verified on the attachable Edge
   (reference-host suite 15/15).
-- Remaining: cold-start prerequisite-on, remote-debugging-disabled,
-  Google-Chrome/Chromium runs if claimed, macOS/Linux matrix.
+- Remaining: remote-debugging-disabled, Google-Chrome/Chromium runs if
+  claimed, macOS/Linux matrix.
+- Qualification finding (freeze-policy exception, upstream behavior vs
+  assumption): on Windows the harness never auto-launches a not-running
+  browser — with the prerequisite satisfied it fails fast with the
+  bounded `chrome-not-running` diagnostic (two controlled runs, Edge
+  confirmed dead before/after). SKILL/troubleshooting updated to the
+  observed contract; the cold-start scenario asserts launch-or-diagnostic
+  and the evidence records which occurred. PASS recorded for the
+  diagnostic contract; the launch-automation path remains unqualified.
 
 - Agent Plugins 1.0.0 packaging: `plugin.json` + `mcp.json` + `skills/browser-use/SKILL.md`.
 - Official Browser Use runtime via `uvx --python 3.12 browser-use@0.13.10 --cli-mcp` (stdio).

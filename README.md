@@ -223,7 +223,10 @@ Before publishing `browser-use@1.0.0`:
 
 - [x] Publisher/license decided: `author.name` = WuLianpu, `license` = MIT, `repository` = <https://github.com/wulianpu/browser-use>.
 - [x] Real JSON Schema validation in CI (ajv against the vendored official Agent Plugins 1.0.0 schemas).
-- [ ] `npm test`, `node scripts/verify-runtime-contract.mjs`, `node scripts/verify-upstream.mjs` all green.
+- [ ] `npm ci && npm test` (full default mode as one command), `node scripts/verify-runtime-contract.mjs`,
+      `node scripts/verify-upstream.mjs` all green at the final commit — record runs in
+      [`docs/release-evidence.md`](docs/release-evidence.md) (CI runs these as separate jobs and
+      never as a single full `npm test`).
 - [ ] Browser qualification matrix: every pending scenario in
       [`docs/qualification-evidence.md`](docs/qualification-evidence.md) has a dated PASS on the
       target Chrome/OS combinations (`existing-browser`, `cold-start` both branches,

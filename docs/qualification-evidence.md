@@ -1,12 +1,5 @@
 # Browser Qualification Evidence
 
-8. **Killed MCP hosts orphan harness daemons** (2026-09-09): every runtime
-   start spawns a browser_harness.daemon scoped to that run's BH_HOME;
-   killing the MCP host does not stop it. 42 orphans accumulated over a
-   day of qualification runs until a new MCP host could not spawn (exit
-   code 2, no daemon log). Hosts must track and stop daemons (or reuse one
-   BH_HOME per task family) on long-lived machines.
-
 Running record of real qualification runs (§81-§84). A scenario counts as
 qualified only with a dated PASS entry on the target platform. No page URLs or
 tab contents are recorded here (§73).
@@ -284,6 +277,13 @@ families, plus the Edge additional coverage.
    Also: the harness `scroll(x, y, dy=...)` helper uses the CDP wheel
    convention — POSITIVE dy scrolls DOWN (dy=-300 moved scrollY 600→300) —
    and `page_info()` exposes viewport dims as `w`/`h`, not nested objects.
+
+8. **Killed MCP hosts orphan harness daemons** (2026-09-09): every runtime
+   start spawns a browser_harness.daemon scoped to that run's BH_HOME;
+   killing the MCP host does not stop it. 42 orphans accumulated over a
+   day of qualification runs until a new MCP host could not spawn (exit
+   code 2, no daemon log). Hosts must track and stop daemons (or reuse one
+   BH_HOME per task family) on long-lived machines.
 
 ## Pending evidence required for 1.0.0 release
 

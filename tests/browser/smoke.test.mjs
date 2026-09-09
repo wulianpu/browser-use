@@ -194,7 +194,7 @@ print("cleanup:", closed)
       assert.ok(after.includes(url), "a pre-existing tab disappeared during the smoke task");
     }
   } finally {
-    await runtime.client.stop();
+    await runtime.stop();
     fixture.server.close();
   }
 });

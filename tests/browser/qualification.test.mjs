@@ -151,7 +151,7 @@ for name in ("close_tab", "close_current_tab"):
             pass
 `);
     }
-    await runtime.client.stop();
+    await runtime.stop();
   }
 });
 
@@ -248,7 +248,7 @@ for name in ("close_tab", "close_current_tab"):
             pass
 `);
     }
-    await runtime.client.stop();
+    await runtime.stop();
   }
 });
 
@@ -324,7 +324,7 @@ runScenario("remote-debugging-disabled: the official permission flow is triggere
       assert.ok(/example\.com/.test(text) || text.length > 0, "after approval the browser action completed");
     }
   } finally {
-    await runtime.client.stop(); // bounded teardown; no zombie wait
+    await runtime.stop(); // bounded teardown; no zombie wait
   }
 
   // Evidence, not content: report the matched signal keyword only (§73).

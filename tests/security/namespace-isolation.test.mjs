@@ -32,7 +32,7 @@ test("task state persists within one MCP process, not across processes (§86)", 
     );
     assert.ok(inTaskA.includes("True"), "namespace persists across calls within the task (§38)");
   } finally {
-    await taskA.client.stop(); // task-boundary recycle (§37)
+    await taskA.stop(); // task-boundary recycle (§37)
   }
 
   // Task B: fresh, independent MCP runtime.
@@ -43,6 +43,6 @@ test("task state persists within one MCP process, not across processes (§86)", 
     );
     assert.ok(inTaskB.includes("True"), "task B's fresh process must not inherit task A's namespace");
   } finally {
-    await taskB.client.stop();
+    await taskB.stop();
   }
 });

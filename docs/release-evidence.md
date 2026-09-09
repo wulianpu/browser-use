@@ -68,6 +68,15 @@ Required in the real Host:
 - [ ] timeout → poison → fresh-process recovery
 - [ ] task-boundary recycle (no cross-task namespace/state)
 - [ ] workspace sanitation (symlink-safe, credential-free retention)
+- [ ] Browser Harness daemon lifecycle (finding #8): with a stable
+      per-instance BH_HOME, sequential MCP task recycle does not
+      accumulate daemons — the next MCP process either reuses the healthy
+      daemon or replaces an unhealthy one deterministically; browser
+      state remains inspectable across the recycle; no cross-security-
+      context daemon reuse; plugin-instance teardown leaves no owned
+      orphan daemon. (Task boundary recycles the MCP process and the
+      Python namespace; the daemon itself MAY stay long-lived — it must
+      not fan out unboundedly.)
 
 Evidence format: host repository + commit SHA implementing the contract, the
 acceptance run log, and a pointer from this file.

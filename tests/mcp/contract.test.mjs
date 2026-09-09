@@ -21,7 +21,7 @@ test("real runtime: initialize, tools/list, both tools present (§80)", async (t
       assert.ok(names.includes(tool), `tools/list must expose ${tool}`);
     }
   } finally {
-    const exit = await runtime.client.stop();
+    const exit = await runtime.stop();
     assert.notEqual(exit?.code, null, "graceful shutdown expected");
   }
 });
@@ -50,6 +50,6 @@ test("tool schemas match the reviewed contract snapshot (§70)", async (t) => {
     assert.equal(shot.properties.max_dim?.type, "integer", "optional max_dim:integer");
     assert.equal(shot.required, undefined, "screenshot has no required fields");
   } finally {
-    await runtime.client.stop();
+    await runtime.stop();
   }
 });

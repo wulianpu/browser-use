@@ -401,6 +401,6 @@ test("real runtime: textual failure classification holds against browser-use@0.1
       }
     }
   } finally {
-    await runtime.client.stop();
+    await runtime.stop();
   }
 });

@@ -9,6 +9,24 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Daemon lifecycle into Gate-2 contract; test-owned daemon cleanup (2026-09-09)
+
+- Finding #8 promoted into the Real-Host acceptance contract as its tenth
+  item, with precise V1 semantics: task boundary recycles the MCP process
+  and Python namespace; the Harness daemon under the stable per-instance
+  BH_HOME may stay long-lived/reused but must not accumulate unboundedly,
+  must not cross security contexts, and must be cleaned at owned instance
+  teardown or replaced when unhealthy. Deliberately NOT "kill the daemon
+  per task" — the daemon is an upstream-defined long-lived middleman.
+- Qualification tooling no longer manufactures orphans: startRuntime()
+  now returns a stop() that recycles the MCP process AND, for test-owned
+  PLUGIN_DATA, stops that BH_HOME's daemon — official `browser-use
+  --reload` scoped by the same env first, then a time-window fallback
+  that kills by PID only harness daemons created after the runtime
+  started (never a global daemon kill, which could hit other owners'
+  daemons). All test/script call sites migrated to runtime.stop().
+- Finding #8 relocated into the behavioral-findings list (was
+  accidentally placed at the top of the evidence document).
 ### Chromium remote-debugging-disabled PASS; evidence-completeness fix (2026-09-09)
 
 - Review correction: the previous entry claimed 'all five scenarios /

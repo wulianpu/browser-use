@@ -97,5 +97,5 @@ try {
   process.exitCode = 1;
 } finally {
   // Runs on every path: process.exitCode (not process.exit) so cleanup executes.
-  if (runtime) await runtime.client.stop();
+  if (runtime) await runtime.stop();
 }

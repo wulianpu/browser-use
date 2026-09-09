@@ -11,7 +11,6 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { McpStdioClient } from "./mcpClient.mjs";
 import { buildRuntimeEnv } from "./hostPolicy.mjs";
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(HERE, "..", "..");
 
@@ -88,9 +87,15 @@ export function requireRuntimeOrSkip(t) {
 // Start the real MCP runtime with the same launch chain an Agent Host must use:
 // sanitized base env (§28) + mcp.json env overlay (§11) + PLUGIN_ROOT/PLUGIN_DATA (§4),
 // cwd from mcp.json, then initialize + tools/list (§69 contract validation).
+// The returned object's stop() recycles BOTH the MCP process and — when the
+// PLUGIN_DATA was test-created — the Browser Harness daemon bound to that
+// BH_HOME (finding #8: killed MCP hosts otherwise orphan their daemons, and
+// a day of qualification runs accumulated 42 of them until spawning broke).
 export async function startRuntime({ pluginData, initTimeoutMs } = {}) {
   const server = mcpServerConfig();
+  const ownsPluginData = !pluginData;
   const dataDir = pluginData ?? (await mkdtemp(join(tmpdir(), "browser-use-plugin-data-")));
+  const startedAt = Date.now();
   const env = buildRuntimeEnv(process.env, {
     pluginData: dataDir,
     pluginRoot: repoRoot,
@@ -106,5 +111,79 @@ export async function startRuntime({ pluginData, initTimeoutMs } = {}) {
   });
   await client.start({ initTimeoutMs: initTimeoutMs ?? 120_000 });
   const { tools } = await client.listTools();
-  return { client, tools, pluginData: dataDir, cwd };
+
+  async function stop() {
+    await client.stop();
+    if (ownsPluginData) {
+      await stopOwnedHarnessDaemon(server, dataDir, startedAt);
+    }
+  }
+
+  return { client, tools, pluginData: dataDir, cwd, ownsPluginData, stop };
+}
+
+// Stop the daemon bound to OUR temp BH_HOME — never a global daemon kill.
+// Primary: the official `browser-use --reload` scoped by the same env (its
+// stop lands asynchronously). Fallback: after a short grace window, kill by
+// PID ONLY harness-daemon processes created after this runtime started
+// (time-window scoping; daemons from other owners predate the window).
+function stopOwnedHarnessDaemon(server, dataDir, startedAtMs) {
+  const daemonEnv = {
+    ...process.env,
+    BH_HOME: `${dataDir}/browser-harness`,
+    BH_AGENT_WORKSPACE: `${dataDir}/agent-workspace`,
+  };
+  try {
+    spawnSync(server.command, [...server.args.slice(0, -1), "--reload"], {
+      env: daemonEnv,
+      windowsHide: true,
+      timeout: 120_000,
+    });
+  } catch {
+    /* best-effort official stop; the fallback below still applies */
+  }
+  const deadline = Date.now() + 12_000;
+  for (;;) {
+    const lingering = harnessDaemonsCreatedAfter(startedAtMs);
+    if (lingering.length === 0) return;
+    if (Date.now() > deadline) {
+      for (const pid of lingering) {
+        try {
+          process.kill(pid); // Windows: terminates; POSIX: SIGTERM
+        } catch {
+          /* already gone */
+        }
+      }
+      return;
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_500); // sleep 1.5s
+  }
+}
+
+// Harness-daemon PIDs created after the given timestamp (empty list on
+// probe failure — cleanup then simply does nothing extra).
+function harnessDaemonsCreatedAfter(startedAtMs) {
+  try {
+    if (process.platform === "win32") {
+      const out = spawnSync(
+        "powershell.exe",
+        ["-NoProfile", "-Command",
+          'Get-CimInstance Win32_Process | Where-Object { $_.Name -like "python*" -and $_.CommandLine -match "browser_harness.daemon" } | ForEach-Object { if ($_.CreationDate.ToFileTimeUtc() -gt ' + (startedAtMs + 11644473600000) * 10000 + ') { $_.ProcessId } }'],
+        { encoding: "utf8", windowsHide: true, timeout: 30_000 },
+      );
+      return (out.stdout ?? "").split(/\s+/).filter((t) => /^\d+$/.test(t)).map(Number);
+    }
+    const out = spawnSync("ps", ["-eo", "pid,lstart,command"], { encoding: "utf8", timeout: 15_000 });
+    const lines = (out.stdout ?? "").split("\n").filter((l) => /browser_harness\.daemon/.test(l));
+    const pids = [];
+    for (const line of lines) {
+      const m = line.match(/^\s*(\d+)\s+/);
+      if (!m) continue;
+      const created = new Date(line.slice(String(m[1]).length + 1, 30)).getTime();
+      if (Number.isFinite(created) && created >= startedAtMs) pids.push(Number(m[1]));
+    }
+    return pids;
+  } catch {
+    return [];
+  }
 }

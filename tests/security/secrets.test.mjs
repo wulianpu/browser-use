@@ -86,7 +86,7 @@ test("secrets are not visible inside the real browser-use MCP process (§79, act
   } finally {
     delete process.env.OPENAI_API_KEY;
     delete process.env.GITHUB_TOKEN;
-    await runtime.client.stop();
+    await runtime.stop();
   }
 });
 

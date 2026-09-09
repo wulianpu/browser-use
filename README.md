@@ -86,6 +86,12 @@ preserved and no runtime is reimplemented.
   `tools/list` only (never auto-open Chrome); one logical browser task per MCP process
   (`browser_exec`'s Python namespace persists across calls); recycle the process at task
   boundaries; single-flight for concurrent tasks (`BROWSER_USE_BUSY` or queue).
+- **Harness daemon lifecycle (finding #8):** the task boundary recycles the MCP process and
+  the Python namespace; the Browser Harness daemon under the stable per-instance
+  `BH_HOME=${PLUGIN_DATA}/browser-harness` MAY remain long-lived and reused — it must NOT
+  fan out or accumulate unboundedly (killed MCP hosts otherwise orphan daemons; 42
+  accumulated in a day of qualification until spawning broke), must not cross security
+  contexts, and must be cleaned at owned instance teardown or replaced when unhealthy.
 - **Bounds (§55-§57):** `browser_exec` ≤ 300 s default / 1 800 s max; the 128 KiB input bound applies
   to the **agent-provided procedure source** (the dispatched wrapped MCP payload is somewhat larger
   — wrapper text plus JSON escaping — and carries its own 1 MiB defense-in-depth cap); textual

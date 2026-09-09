@@ -9,6 +9,22 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Sentinel strict mode for explicit targets (2026-09-09, post-review)
+
+- P1: with BROWSER_USE_QUALIFICATION_BROWSER explicitly set, the
+  real-sentinel suite now requires a LIVE process-attributed DevTools
+  endpoint (the user-enabled flag alone is not attachable proof — an
+  unapproved instance yields only pre-exec failures) and asserts the
+  genuine paths: healthy.ok===true, failing classified
+  user-code-exception/unknown-effects with replay forbidden. A green
+  qualification sentinel run now necessarily proves the OK/ERR paths on
+  the named browser. Non-target (headless/dev) runs keep the
+  machine-dependent leniency so classifier correctness stays verified
+  everywhere.
+- P2: qualification-evidence history note corrected — permission-blocked
+  is auxiliary §84 evidence classified INCONCLUSIVE under current
+  semantics, never cold-start PASS vocabulary.
+
 ### Chrome browser smoke PASS; hidden-tab input findings (2026-09-09)
 
 - Browser smoke dated PASS for Google Chrome / Windows 11

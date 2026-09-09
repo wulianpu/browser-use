@@ -97,9 +97,9 @@ the Chrome/Chromium matrix.
   Allow` → `fatal: permission-blocked: Chrome did not approve the remote
   debugging connection; browser-harness did not retry or create another
   connection`. This is the §84 approval path firing for real: bounded,
-  actionable, no silent retry. The cold-start ON assertion vocabulary now
-  covers all three observed outcomes (launch / chrome-not-running /
-  permission-blocked).
+  actionable, no silent retry. permission-blocked was recorded as AUXILIARY
+  §84 evidence; current qualification semantics classify it INCONCLUSIVE
+  (non-zero exit for a selected scenario), never a cold-start PASS.
 
 ### 2026-09-09 — chrome cold-start OFF attempt at current SHA: INCONCLUSIVE (stale-endpoint contamination)
 

@@ -344,10 +344,14 @@ test("real runtime: textual failure classification holds against browser-use@0.1
     return;
   }
   // When a target browser is explicitly named (sentinel follow-up runs),
-  // prove the attachable browser IS that target so the evidence can carry
-  // the browser's name; otherwise this test is browser-agnostic by design.
+  // prove the attachable browser IS that target AND that a live
+  // process-attributed endpoint exists — a flag without the endpoint (instance
+  // not yet Allow-approved) would only yield pre-exec failures, letting the
+  // suite go green without proving the OK/ERR paths. Without an explicit
+  // target this test is browser-agnostic by design and keeps its
+  // machine-dependent leniency (classifier correctness on headless machines).
   if (hasExplicitTarget()) {
-    await assertAttachableTarget(RUNTIME_GATES.qualificationBrowser, { requireRunning: true });
+    await assertAttachableTarget(RUNTIME_GATES.qualificationBrowser, { requireRunning: true, requireLiveEndpoint: true });
   }
   const runtime = await startRuntime();
   const host = createReferenceHostRuntime({
@@ -365,23 +369,36 @@ test("real runtime: textual failure classification holds against browser-use@0.1
     // Machine-dependent but each side must be classified exactly right:
     // with an attachable browser the first succeeds; without one (dev machine)
     // BOTH come back as pre-exec daemon failures. Never ok:true for a traceback.
-    for (const result of [outcome.healthy, outcome.failing]) {
-      assert.ok(result.ok === true || result.code === "BROWSER_USE_EXEC_FAILED", "no third state exists");
-    }
-    assert.equal(outcome.failing.ok, false, "a raising exec is never a success");
-    assert.equal(outcome.failing.code, "BROWSER_USE_EXEC_FAILED");
-    assert.ok(["user-code-exception", "pre-exec-runtime-failure"].includes(outcome.failing.failureClass));
-    // Outcome must track the failure class: user code that ran and raised
-    // leaves effects unknown; a pre-exec failure never started anything.
-    assert.equal(
-      outcome.failing.outcome,
-      outcome.failing.failureClass === "user-code-exception" ? "unknown-effects" : "known-failed",
-    );
-    assert.equal(outcome.failing.replay, false);
-    if (outcome.healthy.ok) {
+    if (hasExplicitTarget()) {
+      // Qualification sentinel mode: both paths must be GENUINELY exercised —
+      // no pre-exec leniency, or the green run proves nothing about OK/ERR.
+      assert.equal(outcome.healthy.ok, true, "qualification sentinel mode: the OK path must really succeed on the live target");
       assert.ok(outcome.healthy.text.includes("2"), "success carries the computed output");
+      assert.equal(outcome.failing.ok, false, "a raising exec is never a success");
+      assert.equal(outcome.failing.code, "BROWSER_USE_EXEC_FAILED");
+      assert.equal(outcome.failing.failureClass, "user-code-exception", "the ERR path must be a genuine user-code exception");
+      assert.equal(outcome.failing.outcome, "unknown-effects");
+      assert.equal(outcome.failing.replay, false);
     } else {
-      assert.equal(outcome.healthy.failureClass, "pre-exec-runtime-failure", "no attachable runtime on this machine");
+      // Machine-dependent by design: with an attachable browser the success
+      // path runs; without one (headless dev machine) BOTH come back as
+      // pre-exec daemon failures. Never ok:true for a traceback either way.
+      for (const result of [outcome.healthy, outcome.failing]) {
+        assert.ok(result.ok === true || result.code === "BROWSER_USE_EXEC_FAILED", "no third state exists");
+      }
+      assert.equal(outcome.failing.ok, false, "a raising exec is never a success");
+      assert.equal(outcome.failing.code, "BROWSER_USE_EXEC_FAILED");
+      assert.ok(["user-code-exception", "pre-exec-runtime-failure"].includes(outcome.failing.failureClass));
+      assert.equal(
+        outcome.failing.outcome,
+        outcome.failing.failureClass === "user-code-exception" ? "unknown-effects" : "known-failed",
+      );
+      assert.equal(outcome.failing.replay, false);
+      if (outcome.healthy.ok) {
+        assert.ok(outcome.healthy.text.includes("2"), "success carries the computed output");
+      } else {
+        assert.equal(outcome.healthy.failureClass, "pre-exec-runtime-failure", "no attachable runtime on this machine");
+      }
     }
   } finally {
     await runtime.client.stop();

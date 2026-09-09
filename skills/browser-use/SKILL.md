@@ -90,6 +90,7 @@ After Send, Submit, Purchase, Delete, Publish, or account-changing actions, veri
 ## Failures, timeouts, unknown outcome
 
 - Harness/runtime failures arrive as **ordinary text output** (`isError` stays false): a Python traceback whose last line names the real problem (for example `daemon didn't come up` with the daemon-log path). Always read the returned text before deciding a call succeeded — a returned traceback means failure, not success.
+- Distinguish where it failed: a traceback from code that **never started** (daemon/runtime errors) is a clean failure you may retry after fixing; an exception **inside your own code** means everything before the raise already executed — if any of it was consequential (submit, send, purchase), the business outcome is unknown: inspect the page state first, never blind-retry.
 - `browser_exec` calls are bounded (default 300 s; `browser_screenshot` 30 s). Keep procedures well under the budget; split long workflows into verified steps.
 - If a possibly-mutating call ends in timeout, connection loss, MCP crash, or Chrome crash, the outcome is **unknown**: mark it `BROWSER_USE_OUTCOME_UNKNOWN` and do NOT resubmit the same code. Recover the runtime if needed, inspect the current page state, determine whether the effect already occurred, then decide the next action.
 - A crashed MCP runtime is replaced with a fresh process for the next task. Never replay the previous task's code into it.

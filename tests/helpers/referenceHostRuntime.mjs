@@ -27,9 +27,27 @@
 //   neither sentinel     → the wrapper never ran (daemon/runtime pre-exec
 //                          failure, e.g. "daemon didn't come up") → BROWSER_USE_EXEC_FAILED
 //
+// Outcome semantics differ by class, and this is the reliability-critical
+// distinction (review P0):
+//
+//   pre-exec-runtime-failure / mcp-error → outcome "known-failed": the user
+//       code never started, so a deliberate retry after diagnosis is safe.
+//   user-code-exception → outcome "unknown-effects": the code RAN, possibly
+//       performed consequential browser actions, and then raised — the business
+//       result is unknown. Blind retry risks double-submit; the only permitted
+//       next step is to inspect the browser state (on the still-usable
+//       transport), determine what already happened, and only then decide.
+//
 // The wrapper exec's user code with globals() for both globals and locals, so
-// the runtime's persistent-namespace semantics are preserved. Agents cannot
-// forge either sentinel: the nonce is random per call and never shown to them.
+// the runtime's persistent-namespace semantics are preserved.
+//
+// Sentinel trust model: the nonce is random per call and never shown to the
+// agent, which makes normal-execution collisions and accidental forgeries
+// effectively impossible. It is RELIABILITY INSTRUMENTATION for trusted,
+// authorized agent code — not a security boundary. The code runs as arbitrary
+// Python in the same interpreter and could in principle tamper with its own
+// reporting (sys._getframe, patched builtins); containing malicious Python is
+// the host's local.code-execution boundary, not this wrapper.
 //
 // NOT plugin runtime code. Hosts integrate this plugin behind their own
 // equivalent of this wrapper; the real-Host proof is a product release gate.
@@ -112,16 +130,21 @@ export function createReferenceHostRuntime({
                 text: bounded.text,
               };
             }
-            // A determined textual failure: the call completed, so the outcome
-            // is known-failed (not unknown) and the transport stays usable.
+            // Determined textual failure — the call completed, so the
+            // transport stays usable (no poison; that is reserved for
+            // timeouts). But the outcome depends on WHERE it failed:
+            // user-code exceptions leave possible side effects unknown.
+            const userCodeFailed = classification.failureClass === "user-code-exception";
             return {
               ok: false,
               code: "BROWSER_USE_EXEC_FAILED",
-              outcome: "known-failed",
+              outcome: userCodeFailed ? "unknown-effects" : "known-failed",
               replay: false,
               failureClass: classification.failureClass,
               text: bounded.text,
-              nextStep: ["read the returned traceback", "fix the procedure", "retry deliberately"],
+              nextStep: userCodeFailed
+                ? ["inspect the current browser state (this transport is still usable)", "determine which side effects already occurred", "only then decide whether any action is still needed — never blind-retry"]
+                : ["diagnose the returned runtime error", "fix the environment/procedure", "retry deliberately"],
             };
           } catch (error) {
             // §58/§59: a timed-out call may still be executing server-side.
@@ -198,9 +221,10 @@ function wrapWithSentinels(userCode) {
 }
 
 // Classify a finished (non-transport-failing) browser_exec result. Substring
-// matching is unforgeable because the nonce is random per call and never
-// exposed to the agent; it also survives user output printed without a
-// trailing newline.
+// matching is collision-resistant for normal execution — the nonce is random
+// per call and never exposed to the agent, and it also survives user output
+// printed without a trailing newline. This is instrumentation for trusted
+// agent code, not a security boundary against malicious Python.
 function classifyExecResult(raw, { okSentinel, errSentinel }) {
   const text = textOf(raw);
   if (raw && raw.isError === true) {

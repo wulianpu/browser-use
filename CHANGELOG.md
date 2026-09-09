@@ -21,6 +21,30 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 5 (post-review)
+
+- P0 reliability: user-code exceptions no longer classify as "known-failed".
+  Outcome now tracks the failure class — pre-exec runtime failures and MCP
+  errors (user code never started) are known-failed and safe to retry after
+  diagnosis; user-code exceptions are "unknown-effects" (the code ran,
+  possibly mutated the browser, then raised) with replay forbidden and
+  inspect-before-retry as the only guided next step. Transport stays usable
+  for the inspection.
+- Workspace sanitation is now symlink/hardlink-safe: lstat-based
+  classification (never follows links, catches broken symlinks), plain
+  unlink instead of "secure erase" (no physical-erasure claim; encrypted
+  PLUGIN_DATA is the host's lever), readable quarantine only for regular
+  files with nlink == 1, metadata-only records for everything removed.
+- Sentinel trust model corrected in code and docs: per-call nonces are
+  collision-resistant reliability instrumentation for trusted agent code,
+  not an adversarial security boundary (arbitrary Python shares the
+  interpreter and could tamper with its own reporting).
+- Release checklist's real-Host gate expanded to the full contract list
+  (textual exec classification, unknown-effects handling, workspace-state
+  sanitation included); skill teaches the unknown-effects rule; evidence
+  doc lists the real success/user-exception sentinel paths as pending
+  until an attachable-browser run exists.
+
 ### Release hardening round 4 (post-review)
 
 - P0: the reference host no longer classifies textual runtime failures as

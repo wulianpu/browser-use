@@ -5,8 +5,7 @@
 // tests/security/ have an executable, reviewable definition of the required host
 // behavior, and so hosts integrating this plugin can copy a known-good baseline.
 
-import { existsSync } from "node:fs";
-import { mkdir, open, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 // §25 Host permission requirements.
@@ -240,59 +239,69 @@ export function decideAfterFailure({ sideEffectPossible, failure }) {
   };
 }
 
-// §41 quarantine persistent self-modifying state before a new independent
+// §41 sanitize persistent self-modifying state before a new independent
 // execution context starts. Browser Harness runtime/config state is untouched.
 //
-// Per-file policy:
-//   agent-workspace/agent_helpers.py — task-authored executable code, no
-//       credentials expected → quarantined (kept) for diagnostics.
-//   agent-workspace/.env — task-authored environment overlay, MAY contain
-//       credentials, and the harness setdefault()s it into the next task's
-//       environment (BU_NAME/BU_CDP_URL/BU_CDP_WS/...) → securely deleted;
-//       only non-content metadata is recorded. Best-effort overwrite-then-
-//       unlink; hosts with stricter requirements should keep PLUGIN_DATA on
-//       encrypted storage and may zero the whole quarantine area.
+// The agent workspace is UNTRUSTED filesystem state: task-authored entries may
+// be symlinks pointing outside PLUGIN_DATA (following one during cleanup would
+// overwrite or read foreign files) or hardlinks sharing an inode elsewhere.
+// Classification uses lstat (never follows), and removal is a plain unlink:
 //
-// Hosts may go further and give every task a clean agent-workspace; harness
-// state that legitimately persists belongs under BH_HOME instead.
+//   agent-workspace/agent_helpers.py — task-authored executable code:
+//       regular file with no other links → readable quarantine for diagnostics;
+//       symlink / special / shared inode → unlink + metadata-only record.
+//   agent-workspace/.env — task-authored env overlay the harness setdefault()s
+//       into the next task (BU_NAME/BU_CDP_URL/...), possibly containing
+//       credentials → ALWAYS unlink (any type) + metadata-only record; content
+//       is never retained anywhere.
+//
+// No physical-erasure promise is made (SSD wear-leveling and journaling defeat
+// it anyway); hosts wanting stronger guarantees keep PLUGIN_DATA on encrypted
+// storage, which also covers the unlinked blocks.
 export async function prepareExecutionContext(pluginData) {
   const workspace = join(pluginData, "agent-workspace");
   await mkdir(workspace, { recursive: true });
-  const result = { workspace, quarantined: [], removedEnv: null };
-  const helperPath = join(workspace, "agent_helpers.py");
-  if (existsSync(helperPath)) {
-    const quarantineDir = join(pluginData, "quarantine");
+  const quarantineDir = join(pluginData, "quarantine");
+  const result = { workspace, quarantined: [], removed: [] };
+
+  const helperKind = await artifactKind(join(workspace, "agent_helpers.py"));
+  if (helperKind === "regular") {
     await mkdir(quarantineDir, { recursive: true });
     const destination = join(quarantineDir, `${Date.now()}-${process.pid}-agent_helpers.py`);
-    await rename(helperPath, destination);
+    await rename(join(workspace, "agent_helpers.py"), destination);
     result.quarantined.push(destination);
+  } else if (helperKind !== "absent") {
+    await removeWithRecord(workspace, quarantineDir, "agent_helpers.py", helperKind, "unlinked-not-quarantined", result);
   }
-  const envPath = join(workspace, ".env");
-  if (existsSync(envPath)) {
-    const removed = await secureRemoveFile(envPath);
-    const quarantineDir = join(pluginData, "quarantine");
-    await mkdir(quarantineDir, { recursive: true });
-    const metadataPath = join(quarantineDir, `${Date.now()}-${process.pid}-env.removed.json`);
-    await writeFile(metadataPath, JSON.stringify({ original: ".env", removedAt: new Date().toISOString(), ...removed }, null, 2));
-    result.removedEnv = metadataPath;
+
+  const envKind = await artifactKind(join(workspace, ".env"));
+  if (envKind !== "absent") {
+    await removeWithRecord(workspace, quarantineDir, ".env", envKind, "unlinked", result);
   }
+
   return result;
 }
 
-// Overwrite with zeros, then unlink. Best-effort (journaling/SSD wear-leveling
-// defeat guaranteed erasure); the guarantee that matters here is that no
-// plaintext credential is retained by the plugin's own state.
-async function secureRemoveFile(filePath) {
-  const stats = await stat(filePath);
-  const handle = await open(filePath, "r+");
+async function removeWithRecord(workspace, quarantineDir, original, kind, action, holder) {
+  await unlink(join(workspace, original));
+  await mkdir(quarantineDir, { recursive: true });
+  const recordPath = join(quarantineDir, `${Date.now()}-${process.pid}-${original.replace(/[^\w.-]/g, "_")}.record.json`);
+  await writeFile(recordPath, JSON.stringify({ original, kind, action, removedAt: new Date().toISOString() }, null, 2));
+  holder.removed.push({ original, kind, action, recordPath });
+}
+
+// lstat-based classification — never follows links, catches broken symlinks
+// that existsSync would miss.
+async function artifactKind(filePath) {
   try {
-    await handle.writeFile(Buffer.alloc(stats.size));
-    await handle.sync();
-  } finally {
-    await handle.close();
+    const stats = await lstat(filePath);
+    if (stats.isSymbolicLink()) return "symlink";
+    if (!stats.isFile()) return "special";
+    if (stats.nlink > 1) return "shared-inode";
+    return "regular";
+  } catch {
+    return "absent";
   }
-  await unlink(filePath);
-  return { originalBytes: stats.size };
 }
 
 // §39/§87 single-flight gate: one logical browser task per MCP runtime; a second

@@ -68,5 +68,10 @@ tab contents are recorded here (§73).
 - [ ] cold-start prerequisite-on branch PASS (harness actually launches).
 - [ ] remote-debugging-disabled PASS (flow-trigger evidence; optionally
       interactive completion via `BROWSER_USE_QUALIFICATION_APPROVE=1`).
+- [ ] Reference-host real-runtime test on an attachable browser (the OK-sentinel
+      success path and the user-code-exception path are currently proven only
+      against fake transports plus this machine's pre-exec branch): rerun
+      `BROWSER_USE_BROWSER_TESTS=1 node tests/security/reference-host.test.mjs`
+      when existing-browser / cold-start prerequisite-on evidence is collected.
 - [ ] macOS qualification incl. the mac-approve product-diagnostics path (§63).
 - [ ] OS matrix coverage for the platforms the release claims.

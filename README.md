@@ -62,8 +62,13 @@ recycle — exercised end-to-end by
 [`tests/security/reference-host.test.mjs`](tests/security/reference-host.test.mjs), including a
 real-runtime classification test against the pinned browser-use). Because `browser_exec` returns
 Python/harness exceptions as ordinary text with `isError: false`, hosts must classify those results
-as failures; the reference host does this with unpredictable per-call sentinels wrapped around the
-agent's code — no runtime reimplementation, and the persistent-namespace semantics are preserved.
+as failures, split by outcome: a **pre-exec runtime failure** never started user code (known-failed,
+deliberate retry safe), while a **user-code exception** ran possibly-mutating code first
+(outcome **unknown-effects**: inspect the browser state before any retry — never blind-retry). The
+reference host classifies via unpredictable per-call sentinels wrapped around the agent's code —
+reliability instrumentation for trusted, authorized code, not a security boundary against malicious
+Python (that is the host's `local.code-execution` boundary); persistent-namespace semantics are
+preserved and no runtime is reimplemented.
 
 - **Authorization (§25):** `browser_screenshot` → `browser.observe`; `browser_exec` →
   `browser.interact` + `browser.debug` + `local.code-execution`. Without
@@ -201,9 +206,12 @@ Before publishing `browser-use@1.0.0`:
       target Chrome/OS combinations (`existing-browser`, `cold-start` both branches,
       `remote-debugging-disabled`, each on a prepared machine matching the scenario's
       preconditions); macOS mac-approve flow qualified via product diagnostics.
-- [ ] **Real-Host integration proof (P0):** the host-security contract (env sanitization,
-      `local.code-execution` authorization, task-boundary recycle, output bounds) demonstrated
-      in the actual Agent Host, not only in this repo's reference tests.
+- [ ] **Real-Host integration proof (P0):** the host-security contract demonstrated in the actual
+      Agent Host, not only in this repo's reference tests — authorization (`local.code-execution`),
+      environment sanitization, input/output bounds, single-flight, textual `browser_exec`
+      failure classification with **unknown-effects handling** (inspect before retry),
+      timeout→poison→fresh-process recovery, task-boundary recycle, and workspace-state sanitation
+      (symlink-safe, credential-free retention).
 - [ ] Review gates in the frozen spec (`Browser Use Agent Plugin.md` §90-§96) all checked.
 
 ## License

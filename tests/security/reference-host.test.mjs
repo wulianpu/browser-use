@@ -98,45 +98,74 @@ test("the wrapper preserves the official runtime contract, not a reimplementatio
 });
 
 test("textual failures are classified as failures — never ok:true (review P0)", async () => {
-  const cases = ["user-error", "pre-exec-failure", "mcp-error"];
-  for (const mode of cases) {
+  const expectedOutcome = { "user-error": "unknown-effects", "pre-exec-failure": "known-failed", "mcp-error": "known-failed" };
+  for (const mode of Object.keys(expectedOutcome)) {
     const transport = makeFakeTransport({ respond: runtimeLikeRespond({ mode }) });
     const host = hostWith(transport);
     const result = await host.withTask(mode, (task) => task.exec("click_at_xy(1, 1)"));
     assert.equal(result.ok, false, `${mode} must not be classified as success`);
     assert.equal(result.code, "BROWSER_USE_EXEC_FAILED", mode);
-    assert.equal(result.outcome, "known-failed", mode);
+    assert.equal(result.outcome, expectedOutcome[mode], mode);
     assert.equal(result.replay, false, mode);
     assert.equal(transport.stopped, 1, `${mode}: a determined failure still recycles the transport at task end`);
   }
 });
 
-test("a user-printed fake traceback with the OK sentinel is still a success (no false positives)", async () => {
+test("a user-printed fake traceback with the OK sentinel is still a success (collision-resistant)", async () => {
   const transport = makeFakeTransport({
     respond: runtimeLikeRespond({ mode: "ok", extra: "Traceback (most recent call last):\n  ... (printed by the user's own code)\n" }),
   });
   const host = hostWith(transport);
   const result = await host.withTask("t1", (task) => task.exec("print('Traceback (most recent call last):')"));
-  assert.equal(result.ok, true, "unforgeable OK sentinel decides, not traceback-ish text");
+  assert.equal(result.ok, true, "the per-call OK sentinel decides, not traceback-ish text");
   assert.ok(!result.text.includes("__BROWSER_USE_EXEC"), "sentinels are stripped from delivered output");
 });
 
-test("determined textual failure keeps the transport usable (unlike timeouts)", async () => {
+test("user-code exception after possible side effects → unknown-effects, inspect before retry (review P0)", async () => {
   const transport = makeFakeTransport({
     respond: (name, args, timeoutMs, callIndex) => {
       const mode = callIndex === 1 ? "user-error" : "ok";
+      return runtimeLikeRespond({ mode, extra: callIndex === 2 ? "page state: order #4212 already created\n" : "" })(name, args);
+    },
+  });
+  const host = hostWith(transport);
+  const outcome = await host.withTask("t1", async (task) => {
+    // Submit clicked, page accepted, then the agent's own code raised.
+    const failure = await task.exec('click_at_xy(submit_x, submit_y)\nwait_for_load()\nraise ValueError("unexpected page")');
+    // Guidance must be inspect-first; the transport is still usable for that.
+    const inspection = await task.exec("print(page_state)");
+    return { failure, inspection };
+  });
+  assert.equal(outcome.failure.ok, false);
+  assert.equal(outcome.failure.code, "BROWSER_USE_EXEC_FAILED");
+  assert.equal(outcome.failure.failureClass, "user-code-exception");
+  assert.equal(outcome.failure.outcome, "unknown-effects", "side effects may have happened before the raise");
+  assert.equal(outcome.failure.replay, false, "never blind-retry a possibly-mutated call");
+  const steps = outcome.failure.nextStep.join(" | ").toLowerCase();
+  const inspectIndex = steps.indexOf("inspect");
+  const decideIndex = steps.indexOf("only then decide");
+  assert.ok(inspectIndex !== -1 && decideIndex > inspectIndex, "inspect comes before deciding");
+  assert.ok(!/^retry/.test(outcome.failure.nextStep[0].trim()), "retry is not the first suggested step");
+  assert.equal(outcome.inspection.ok, true, "the same transport serves the state inspection");
+  assert.ok(outcome.inspection.text.includes("order #4212"), "inspection reveals the already-created order");
+});
+
+test("pre-exec failures never ran user code → known-failed, deliberate retry is safe", async () => {
+  const transport = makeFakeTransport({
+    respond: (name, args, timeoutMs, callIndex) => {
+      const mode = callIndex === 1 ? "pre-exec-failure" : "ok";
       return runtimeLikeRespond({ mode })(name, args);
     },
   });
   const host = hostWith(transport);
   const outcome = await host.withTask("t1", async (task) => {
-    const failure = await task.exec("raise ValueError('boom')");
-    assert.equal(failure.ok, false);
-    const retry = await task.exec("print('after fix')");
+    const failure = await task.exec("print('never runs')");
+    const retry = failure.outcome === "known-failed" ? await task.exec("print('after runtime fix')") : null;
     return { failure, retry };
   });
-  assert.equal(outcome.failure.failureClass, "user-code-exception");
-  assert.equal(outcome.retry.ok, true, "the same transport serves the deliberate retry");
+  assert.equal(outcome.failure.failureClass, "pre-exec-runtime-failure");
+  assert.equal(outcome.failure.outcome, "known-failed", "user code never started, so no side effects are pending");
+  assert.equal(outcome.retry.ok, true, "a diagnosed pre-exec failure may be retried deliberately");
 });
 
 test("timeout poisons the transport: unknown outcome, process stopped, no replay, explicit recovery (§58-§60)", async () => {
@@ -321,6 +350,13 @@ test("real runtime: textual failure classification holds against browser-use@0.1
     assert.equal(outcome.failing.ok, false, "a raising exec is never a success");
     assert.equal(outcome.failing.code, "BROWSER_USE_EXEC_FAILED");
     assert.ok(["user-code-exception", "pre-exec-runtime-failure"].includes(outcome.failing.failureClass));
+    // Outcome must track the failure class: user code that ran and raised
+    // leaves effects unknown; a pre-exec failure never started anything.
+    assert.equal(
+      outcome.failing.outcome,
+      outcome.failing.failureClass === "user-code-exception" ? "unknown-effects" : "known-failed",
+    );
+    assert.equal(outcome.failing.replay, false);
     if (outcome.healthy.ok) {
       assert.ok(outcome.healthy.text.includes("2"), "success carries the computed output");
     } else {

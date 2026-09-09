@@ -87,8 +87,13 @@ preserved and no runtime is reimplemented.
   output ≤ 1 MiB, screenshots ≤ 16 MiB (`BROWSER_USE_RESULT_TOO_LARGE`).
 - **Unknown outcome (§58-§60):** after timeout/disconnect/crash of a possibly-mutating call →
   outcome unknown, **never auto-replay**; recover, inspect page state, then decide.
-- **Helper quarantine (§41):** before a new independent execution context, quarantine
-  `${PLUGIN_DATA}/agent-workspace/agent_helpers.py` (persistent self-modifying helpers are out of scope).
+- **Workspace sanitation (§40/§41):** before a new independent execution context, sanitize
+  `${PLUGIN_DATA}/agent-workspace` as untrusted filesystem state: `agent_helpers.py` is quarantined
+  readable only as a regular single-link file; `.env` (harness auto-loaded, possibly credentials) is
+  always removed with metadata-only records — content never retained. Symlinks are never followed,
+  shared inodes are never quarantined, classification is lstat-based and fail-closed, and the
+  quarantine destination is re-verified after rename (TOCTOU guard). Persistent self-modifying
+  helpers remain out of scope.
 - **Error contract (§75):** map failures to the stable `BROWSER_USE_*` codes; never surface raw
   Python tracebacks as the business API.
 - **Uninstall:** remove only `PLUGIN_ROOT` and `PLUGIN_DATA`. The user's Chrome profile is never touched.

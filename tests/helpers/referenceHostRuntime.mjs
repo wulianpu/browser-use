@@ -200,22 +200,35 @@ export function createReferenceHostRuntime({
 
 // Wrap user code with unpredictable per-call sentinels. The wrapper is plain
 // Python executed by the official browser_exec — no runtime is reimplemented —
-// and exec's the user code with globals() for both scopes so definitions keep
-// landing in the runtime's persistent namespace. JSON.stringify output is a
-// valid Python double-quoted literal (same escapes for \\, \", \n, \uXXXX).
-function wrapWithSentinels(userCode) {
+// and exec's the user code with the persistent globals dict for both scopes,
+// so the runtime's persistent-namespace semantics are preserved.
+//
+// Shadowing-proof instrumentation: user code shares the persistent globals
+// with this wrapper, so perfectly ordinary code (`print = lambda *a: None`)
+// would swallow a module-level `print(SENTINEL)` and misclassify the call as
+// a pre-exec failure. The emitters therefore live inside __bu_run(), whose
+// default arguments capture exec/compile/globals()/BaseException/print/
+// traceback/stdout ONCE at definition time — rebinding any of those names
+// during user code (or by an earlier call, since the namespace persists)
+// cannot affect this call's sentinel reporting.
+export function wrapWithSentinels(userCode) {
   const nonce = randomBytes(16).toString("hex");
   const okSentinel = `__BROWSER_USE_EXEC_OK_${nonce}__`;
   const errSentinel = `__BROWSER_USE_EXEC_ERR_${nonce}__`;
   const wrapped = [
-    "try:",
-    `    exec(compile(${JSON.stringify(userCode)}, "<browser_exec>", "exec"), globals(), globals())`,
-    "except BaseException:",
-    `    print(${JSON.stringify(errSentinel)})`,
-    "    import traceback",
-    "    traceback.print_exc()",
-    "else:",
-    `    print(${JSON.stringify(okSentinel)})`,
+    "import builtins as __bu_b, sys as __bu_sys, traceback as __bu_tb",
+    "def __bu_run(__code, __ok, __err,",
+    "    __exec=__bu_b.exec, __compile=__bu_b.compile, __globals=__bu_b.globals(),",
+    "    __base_exception=__bu_b.BaseException, __print=__bu_b.print,",
+    "    __traceback=__bu_tb, __output=__bu_sys.stdout):",
+    "    try:",
+    "        __exec(__compile(__code, '<browser_exec>', 'exec'), __globals, __globals)",
+    "    except __base_exception:",
+    "        __print(__err, file=__output)",
+    "        __traceback.print_exc(file=__output)",
+    "    else:",
+    "        __print(__ok, file=__output)",
+    `__bu_run(${JSON.stringify(userCode)}, ${JSON.stringify(okSentinel)}, ${JSON.stringify(errSentinel)})`,
   ].join("\n");
   return { okSentinel, errSentinel, wrapped };
 }

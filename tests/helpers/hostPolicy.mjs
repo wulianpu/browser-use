@@ -264,26 +264,36 @@ export async function prepareExecutionContext(pluginData) {
   const quarantineDir = join(pluginData, "quarantine");
   const result = { workspace, quarantined: [], removed: [] };
 
-  const helperKind = await artifactKind(join(workspace, "agent_helpers.py"));
+  const helperPath = join(workspace, "agent_helpers.py");
+  const helperKind = await artifactKind(helperPath);
   if (helperKind === "regular") {
     await mkdir(quarantineDir, { recursive: true });
     const destination = join(quarantineDir, `${Date.now()}-${process.pid}-agent_helpers.py`);
-    await rename(join(workspace, "agent_helpers.py"), destination);
-    result.quarantined.push(destination);
+    await rename(helperPath, destination);
+    // TOCTOU guard: re-verify what actually landed in quarantine — if another
+    // local process swapped the entry between lstat and rename, never keep a
+    // non-regular or shared-inode artifact where diagnostics could follow it.
+    const destinationKind = await artifactKind(destination);
+    if (destinationKind === "regular") {
+      result.quarantined.push(destination);
+    } else {
+      await recordRemoval(quarantineDir, destination, "agent_helpers.py", destinationKind, "quarantine-rejected-after-rename", result);
+    }
   } else if (helperKind !== "absent") {
-    await removeWithRecord(workspace, quarantineDir, "agent_helpers.py", helperKind, "unlinked-not-quarantined", result);
+    await recordRemoval(quarantineDir, helperPath, "agent_helpers.py", helperKind, "unlinked-not-quarantined", result);
   }
 
-  const envKind = await artifactKind(join(workspace, ".env"));
+  const envPath = join(workspace, ".env");
+  const envKind = await artifactKind(envPath);
   if (envKind !== "absent") {
-    await removeWithRecord(workspace, quarantineDir, ".env", envKind, "unlinked", result);
+    await recordRemoval(quarantineDir, envPath, ".env", envKind, "unlinked", result);
   }
 
   return result;
 }
 
-async function removeWithRecord(workspace, quarantineDir, original, kind, action, holder) {
-  await unlink(join(workspace, original));
+async function recordRemoval(quarantineDir, unlinkPath, original, kind, action, holder) {
+  await unlink(unlinkPath);
   await mkdir(quarantineDir, { recursive: true });
   const recordPath = join(quarantineDir, `${Date.now()}-${process.pid}-${original.replace(/[^\w.-]/g, "_")}.record.json`);
   await writeFile(recordPath, JSON.stringify({ original, kind, action, removedAt: new Date().toISOString() }, null, 2));
@@ -291,7 +301,9 @@ async function removeWithRecord(workspace, quarantineDir, original, kind, action
 }
 
 // lstat-based classification — never follows links, catches broken symlinks
-// that existsSync would miss.
+// that existsSync would miss. Fail-closed: only a proven-missing path counts
+// as absent; any other error (EACCES/EPERM/EIO/…) propagates so the host
+// cannot silently start a new task on a workspace it failed to inspect.
 async function artifactKind(filePath) {
   try {
     const stats = await lstat(filePath);
@@ -299,8 +311,9 @@ async function artifactKind(filePath) {
     if (!stats.isFile()) return "special";
     if (stats.nlink > 1) return "shared-inode";
     return "regular";
-  } catch {
-    return "absent";
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") return "absent";
+    throw error;
   }
 }
 

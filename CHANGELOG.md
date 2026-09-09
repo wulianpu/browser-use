@@ -21,6 +21,27 @@ Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.
 - Verification gates: `scripts/verify-upstream.mjs` (drift + browser-harness pin + schema
   drift), `scripts/verify-runtime-contract.mjs` (live MCP contract vs. snapshot).
 
+### Release hardening round 6 (post-review)
+
+- P0 correctness: sentinel instrumentation no longer depends on names shared
+  with user code. Ordinary shadowing (`print = lambda *a: None`, reassigning
+  exec/compile/BaseException) previously swallowed sentinel output, making a
+  succeeded or side-effecting call classify as "pre-exec failure" — the exact
+  known-failed/unknown-effects confusion the classification exists to
+  prevent. Emitters now live inside __bu_run(), whose default arguments
+  capture exec/compile/globals()/BaseException/print/traceback/stdout at
+  definition time; persistent-namespace semantics are unchanged. Verified by
+  new Python-executed wrapper unit tests (shadowing on success, on raise,
+  from an earlier call; namespace persistence; per-call nonce uniqueness).
+- Workspace sanitation fail-closed: artifactKind treats only ENOENT/ENOTDIR
+  as absent — EACCES/EPERM/EIO/… propagate so a task never starts on a
+  workspace that could not be inspected.
+- TOCTOU guard: the quarantine destination is re-verified after rename;
+  anything but a regular single-link file is unlinked and downgraded to a
+  metadata-only record.
+- README "Helper quarantine" bullet renamed to "Workspace sanitation" with
+  the current semantics.
+
 ### Release hardening round 5 (post-review)
 
 - P0 reliability: user-code exceptions no longer classify as "known-failed".

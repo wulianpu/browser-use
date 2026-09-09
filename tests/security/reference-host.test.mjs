@@ -91,9 +91,10 @@ test("the wrapper preserves the official runtime contract, not a reimplementatio
   const host = hostWith(transport);
   await host.withTask("t1", (task) => task.exec("print(page_info())"));
   const sent = transport.callLog[0].args.code;
-  assert.match(sent, /exec\(compile\(/, "user code still executes through exec(compile(...))");
-  assert.match(sent, /globals\(\), globals\(\)/, "persistent-namespace semantics preserved");
-  assert.match(sent, /except BaseException:/, "the wrapper mirrors the runtime's own catch-all");
+  assert.match(sent, /__exec\(__compile\(/, "user code still executes through exec(compile(...))");
+  assert.match(sent, /__globals, __globals\)/, "persistent-namespace semantics preserved (persistent globals for both scopes)");
+  assert.match(sent, /__exec=__bu_b\.exec/, "instrumentation captures builtins at definition time (shadowing-proof)");
+  assert.match(sent, /except __base_exception:/, "the wrapper mirrors the runtime's own catch-all");
   assert.ok(extractSentinels(sent).ok && extractSentinels(sent).err, "both sentinels present in the wrapped payload");
 });
 

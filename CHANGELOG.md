@@ -1,8 +1,13 @@
 # Changelog
 
-## 1.0.0 — 2026-09-08
+## [Unreleased]
 
-Initial release, implementing the frozen V1 baseline (`Browser Use Agent Plugin.md`).
+Target release: **1.0.0** — not yet released. The date and this heading change to
+`## 1.0.0 — <date>` only when the release gates in README.md pass (browser
+qualification matrix + real-Host integration proof) and `v1.0.0` is actually
+tagged. No GitHub Release exists yet.
+
+Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
 - Agent Plugins 1.0.0 packaging: `plugin.json` + `mcp.json` + `skills/browser-use/SKILL.md`.
 - Official Browser Use runtime via `uvx --python 3.12 browser-use@0.13.10 --cli-mcp` (stdio).

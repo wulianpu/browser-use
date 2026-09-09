@@ -202,6 +202,21 @@ dedicated ephemeral Chrome runner (it executes registry-resolved Python code and
 4. Run the full suite + browser qualification.
 5. Publish a **new plugin revision** (e.g. `1.1.0` → Browser Use `0.14.x`); never silently re-pin an existing revision.
 
+## Repository status: FROZEN (code-complete, pre-release)
+
+The code has passed architecture/compliance/security/reliability review. Core
+implementation changes are accepted **only** for:
+
+- browser qualification exposing real Browser Use behavior that contradicts current assumptions;
+- real-Host integration exposing a contract that cannot land as specified;
+- a Browser Use upstream pin upgrade (§72 flow);
+- a genuine P0/P1 security or reliability defect.
+
+Anything else — including further reference-wrapper edge cases — belongs after
+1.0.0. The two open release gates are tracked in
+[`docs/qualification-evidence.md`](docs/qualification-evidence.md) and in the
+checklist below.
+
 ## Release checklist
 
 Before publishing `browser-use@1.0.0`:

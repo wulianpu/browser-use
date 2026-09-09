@@ -23,11 +23,17 @@ append the row here.
 ## Gate 1 — browser qualification
 
 Scenario matrix and run log live in
-[`qualification-evidence.md`](qualification-evidence.md). Current summary:
-Windows 11 cold-start (prerequisite-off) PASS; existing-browser,
-cold-start prerequisite-on, remote-debugging-disabled, attachable-browser
-real OK/ERR sentinel paths, macOS/Linux — all PENDING. GitHub
-workflow_dispatch qualification runs: 0.
+[`qualification-evidence.md`](qualification-evidence.md). Current summary
+(2026-09-09, owner decision extended the qualified matrix to include
+Microsoft Edge):
+
+- PASS — Windows 11 / Edge: existing-browser; real OK/ERR sentinel paths.
+- PASS — Windows 11 (earlier): cold-start prerequisite-off; real pre-exec
+  failure classification.
+- PENDING — cold-start prerequisite-on (needs Edge fully quit);
+  remote-debugging-disabled (needs a debugging-disabled machine);
+  Google-Chrome/Chromium runs if claimed; macOS/Linux per claimed matrix.
+- GitHub workflow_dispatch qualification runs: 0.
 
 - [ ] All scenarios dated-PASS on the claimed platform matrix.
 

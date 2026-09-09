@@ -6,12 +6,18 @@ tab contents are recorded here (§73).
 
 ## Scenario matrix
 
-| Scenario | Windows 11 (this repo's dev machine) | macOS | Linux |
+| Scenario | Windows 11 | macOS | Linux |
 | --- | --- | --- | --- |
-| existing-browser | PENDING — needs remote debugging user-enabled on the machine | — | — |
-| cold-start (prerequisite off branch) | **PASS 2026-09-08** | — | — |
-| cold-start (prerequisite on branch) | PENDING — needs remote debugging user-enabled | — | — |
-| remote-debugging-disabled | PENDING — needs browser running with debugging disabled | — | — |
+| existing-browser | **PASS 2026-09-09 — Microsoft Edge** (Google-Chrome run pending) | — | — |
+| cold-start (prerequisite off) | **PASS 2026-09-08** | — | — |
+| cold-start (prerequisite on) | PENDING — needs Edge fully quit | — | — |
+| remote-debugging-disabled | PENDING — needs a machine with debugging disabled (this machine now has it enabled) | — | — |
+| real OK / ERR sentinel paths | **PASS 2026-09-09 — Microsoft Edge** | — | — |
+
+Scope note (2026-09-09): the V1 qualified browser matrix was extended by owner
+decision to include Microsoft Edge (probe covers msedge.exe and the Edge
+profile dir). Google Chrome / Chromium runs remain pending if the release
+claims them.
 
 ## Run log
 
@@ -45,6 +51,26 @@ tab contents are recorded here (§73).
   reported as success. On a machine with an attachable browser the same test
   additionally exercises the `user-code-exception` and success branches.
 
+### 2026-09-09 — existing-browser (Microsoft Edge, Windows 11, browser-use 0.13.10)
+
+- Preconditions asserted: Edge running; remote-debugging state `enabled`
+  (Edge Local State); live DevToolsActivePort on 9222.
+- Command: `BROWSER_USE_QUALIFICATION=1 BROWSER_USE_QUALIFICATION_SCENARIO=existing-browser node tests/browser/qualification.test.mjs`
+- Result: **PASS** (~16 s) — attached to the running Edge with the user's real
+  tabs, created one task tab (example.com), verified the work, closed only the
+  task tab, and asserted every pre-existing tab still present afterwards
+  (URLs compared in memory, never logged).
+
+### 2026-09-09 — real OK / ERR sentinel paths on an attachable browser (Edge)
+
+- `BROWSER_USE_BROWSER_TESTS=1 node tests/security/reference-host.test.mjs` —
+  15/15 including the real-runtime classification test: on the attachable Edge
+  the success branch returned the OK sentinel with computed output, and the
+  raise branch returned the ERR sentinel with traceback, classified
+  `user-code-exception` → `unknown-effects`.
+- Explicit probe re-confirmed both paths: OK sentinel present (`isError: false`),
+  ERR sentinel present with traceback carried (`isError: false`).
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
@@ -61,17 +87,16 @@ tab contents are recorded here (§73).
 
 ## Pending evidence required for 1.0.0 release
 
-- [ ] existing-browser PASS on at least one machine with remote debugging
-      user-enabled (tab-preservation invariant against a real logged-in
-      profile). Enabling remote debugging changes the machine's browser
-      security posture — machine owner's explicit decision.
-- [ ] cold-start prerequisite-on branch PASS (harness actually launches).
-- [ ] remote-debugging-disabled PASS (flow-trigger evidence; optionally
-      interactive completion via `BROWSER_USE_QUALIFICATION_APPROVE=1`).
-- [ ] Reference-host real-runtime test on an attachable browser (the OK-sentinel
-      success path and the user-code-exception path are currently proven only
-      against fake transports plus this machine's pre-exec branch): rerun
-      `BROWSER_USE_BROWSER_TESTS=1 node tests/security/reference-host.test.mjs`
-      when existing-browser / cold-start prerequisite-on evidence is collected.
+- [ ] cold-start prerequisite-on PASS (fully quit Edge, then run the
+      `cold-start` scenario — the harness must launch the browser).
+- [ ] remote-debugging-disabled PASS on a machine with debugging disabled
+      (flow-trigger evidence; optionally interactive completion via
+      `BROWSER_USE_QUALIFICATION_APPROVE=1`).
+- [ ] Google Chrome / Chromium qualification runs if the release claims them
+      (requires enabling remote debugging in Google Chrome on this machine).
+- [x] Reference-host real-runtime test on an attachable browser — **PASS
+      2026-09-09 (Edge)**: real OK-sentinel success path and real
+      user-code-exception path both verified (fake transports plus this
+      machine's earlier pre-exec branch already covered the rest).
 - [ ] macOS qualification incl. the mac-approve product-diagnostics path (§63).
 - [ ] OS matrix coverage for the platforms the release claims.

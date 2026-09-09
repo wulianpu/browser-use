@@ -11,7 +11,7 @@ Direct browser control via CDP, provided by the official Browser Use runtime (pi
 - `browser_exec` — run Python with Browser Harness helpers preloaded (`page_info()`, `new_tab()`, `cdp(...)`, ...). The Python namespace persists across calls **within one logical task** and is reset between tasks.
 - `browser_screenshot` — capture the current page as an image.
 
-This plugin drives the user's local browser through Browser Use. Browser Use can attach to local Chromium-family browsers (Chrome, Chromium, and others it discovers, such as Edge or Brave); **this plugin's V1 qualification covers Chrome/Chromium only** — other Chromium-family browsers may work but are unqualified here. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
+This plugin drives the user's local browser through Browser Use. Browser Use can attach to local Chromium-family browsers (Chrome, Chromium, Edge, and others it discovers, such as Brave); **this plugin's V1 qualification covers Chrome, Chromium, and Microsoft Edge** — other Chromium-family browsers may work but are unqualified here. The browser lifecycle (launch, attach, remote-debugging setup, tabs, daemon) belongs to Browser Use — do not reimplement or work around it.
 
 ## Security classification — read first
 
@@ -99,7 +99,7 @@ Host error codes you may see: `BROWSER_USE_RUNTIME_MISSING`, `BROWSER_USE_RUNTIM
 
 ## Local browser connection
 
-The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium qualified for V1; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
+The normal local flow attaches to the running browser's CDP endpoint (Chrome/Chromium/Edge qualified for V1; Browser Use may discover other local Chromium-family browsers). No browser ids or local profile selection.
 
 - Whether the harness can launch the browser depends on the remote-debugging prerequisite: with it satisfied, the harness launches a not-running browser and retries; without it (no user-enabled remote debugging and no live DevToolsActivePort), nothing is launched — `browser_exec` returns a traceback ending in `daemon didn't come up` pointing at the daemon log, which names the `chrome://inspect/#remote-debugging` step.
 - If Chrome is running but remote debugging is not enabled, the harness opens `chrome://inspect/#remote-debugging`; report this state to the user.

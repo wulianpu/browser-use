@@ -6,29 +6,37 @@
 // devtools.remote_debugging.user-enabled, plus a live DevToolsActivePort file
 // in the profile root (authoritative while the browser runs).
 //
-// Profile discovery covers Google Chrome AND Chromium (V1 qualification
-// scope: Chrome/Chromium). Other Chromium-family browsers (Edge/Brave) are
-// not probed — they are outside the qualified scope.
+// Profile discovery covers the V1-qualified browsers: Google Chrome,
+// Chromium, and Microsoft Edge (Edge added by owner decision on 2026-09-09,
+// backed by real qualification runs). Other Chromium-family browsers
+// (Brave etc.) are not probed — they remain outside the qualified scope.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import net from "node:net";
 import { join } from "node:path";
 
+const PROCESS_NAMES = {
+  win32: ["chrome.exe", "msedge.exe"], // Chromium builds also run as chrome.exe
+  darwin: ["Google Chrome", "Chromium", "Microsoft Edge"],
+  linux: ["chrome", "chromium", "chrome-browser", "msedge", "microsoft-edge"],
+};
+
 export function chromeProcessRunning() {
   // Best-effort process probe per platform; false negatives on exotic setups
   // are acceptable (a scenario then fails its precondition loudly).
-  // Chromium builds on Windows also run as chrome.exe, so one filter covers both.
   if (process.platform === "win32") {
-    const out = spawnSync("tasklist", ["/FI", "IMAGENAME eq chrome.exe", "/NH"], {
-      encoding: "utf8",
-      windowsHide: true,
-      timeout: 15_000,
-    });
-    return /chrome\.exe/i.test(out.stdout ?? "");
+    for (const image of PROCESS_NAMES.win32) {
+      const out = spawnSync("tasklist", ["/FI", `IMAGENAME eq ${image}`, "/NH"], {
+        encoding: "utf8",
+        windowsHide: true,
+        timeout: 15_000,
+      });
+      if (new RegExp(image.replace(".", "\\."), "i").test(out.stdout ?? "")) return true;
+    }
+    return false;
   }
-  const candidates = process.platform === "darwin" ? ["Google Chrome", "Chromium"] : ["chrome", "chromium", "chrome-browser"];
-  for (const name of candidates) {
+  for (const name of PROCESS_NAMES[process.platform] ?? PROCESS_NAMES.linux) {
     const out = spawnSync("pgrep", ["-x", name], { encoding: "utf8", timeout: 15_000 });
     if (out.status === 0) return true;
   }
@@ -44,18 +52,21 @@ export function chromiumFamilyDataDirs() {
       ? [
           ["chrome", join(process.env.LOCALAPPDATA, "Google", "Chrome", "User Data")],
           ["chromium", join(process.env.LOCALAPPDATA, "Chromium", "User Data")],
+          ["edge", join(process.env.LOCALAPPDATA, "Microsoft", "Edge", "User Data")],
         ]
       : [],
     darwin: home
       ? [
           ["chrome", join(home, "Library", "Application Support", "Google", "Chrome")],
           ["chromium", join(home, "Library", "Application Support", "Chromium")],
+          ["edge", join(home, "Library", "Application Support", "Microsoft Edge")],
         ]
       : [],
     linux: home
       ? [
           ["chrome", join(home, ".config", "google-chrome")],
           ["chromium", join(home, ".config", "chromium")],
+          ["edge", join(home, ".config", "microsoft-edge")],
         ]
       : [],
   };

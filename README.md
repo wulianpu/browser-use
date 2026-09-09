@@ -36,8 +36,9 @@ Runtime core is exactly three files: `plugin.json`, `mcp.json`, `skills/browser-
 `upstream.lock.json` is a provenance/development artifact — it does not define runtime semantics.
 
 **Browser scope:** Browser Use can drive local Chromium-family browsers (its discovery also covers
-Edge/Brave-class launchers). This thin adapter does not constrain that capability, but V1
-qualification covers **Chrome/Chromium only**; other Chromium-family browsers are unqualified here.
+Brave-class launchers). This thin adapter does not constrain that capability, but V1 qualification
+covers **Google Chrome, Chromium, and Microsoft Edge** — Edge added by owner decision on 2026-09-09
+and qualified by real scenario runs; other Chromium-family browsers are unqualified here.
 
 ## Ownership model (do not violate)
 

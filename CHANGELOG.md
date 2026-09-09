@@ -9,6 +9,19 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Qualification progress (2026-09-09)
+
+- Owner decision extended the V1 qualified browser matrix to include
+  Microsoft Edge; the qualification probe now covers msedge.exe and the
+  Edge profile directory (README/SKILL scope wording updated).
+- Real evidence recorded: existing-browser PASS against the running Edge
+  with real user tabs (task tab created/verified/closed; pre-existing tabs
+  preserved, compared in memory); real OK-sentinel success and real
+  user-code-exception ERR-sentinel paths verified on the attachable Edge
+  (reference-host suite 15/15).
+- Remaining: cold-start prerequisite-on, remote-debugging-disabled,
+  Google-Chrome/Chromium runs if claimed, macOS/Linux matrix.
+
 - Agent Plugins 1.0.0 packaging: `plugin.json` + `mcp.json` + `skills/browser-use/SKILL.md`.
 - Official Browser Use runtime via `uvx --python 3.12 browser-use@0.13.10 --cli-mcp` (stdio).
 - `PLUGIN_DATA` containment (`BH_HOME`, `BH_AGENT_WORKSPACE`, `cwd`), telemetry/recordings/

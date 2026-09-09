@@ -205,6 +205,10 @@ remote-debugging-disabled.
       existing-browser; cold-start prerequisite-off (current-SHA re-proof)
       and prerequisite-on; real OK/ERR sentinel paths;
       remote-debugging-disabled.
+- [ ] **Browser smoke dated PASS** — Google Chrome / Windows 11 (suite:
+      `tests/browser/smoke.test.mjs` — navigation, AX observation,
+      click/type/press/scroll, screenshot, task-tab cleanup; needs an
+      attachable target) and, later, Chromium on its dedicated environment.
 - [x] **Microsoft Edge / Windows 11 additional qualification — PASS
       2026-09-09**: existing-browser; cold-start prerequisite-on
       (`chrome-not-running` diagnostic); real OK/ERR sentinel paths.

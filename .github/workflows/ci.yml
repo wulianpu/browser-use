@@ -25,6 +25,14 @@ on:
           - chrome
           - chromium
           - edge
+      run-smoke:
+        description: "Also run the browser smoke suite (isolated step, after the scenario)"
+        type: boolean
+        default: false
+      run-sentinel:
+        description: "Also run the real sentinel-path suite (isolated step, needs an attachable target)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -85,14 +93,19 @@ jobs:
 
   # Manual qualification. Runner requirements (review R9):
   #   dedicated, ephemeral, no production secrets, no personal files —
-  #   the job executes real PyPI-resolved Python code and drives a real Chrome
+  #   the job executes real PyPI-resolved Python code and drives a real browser
   #   via browser_exec (treat the runner as an untrusted execution environment).
-  # Scenario preconditions are asserted by the tests themselves; prepare the
-  # machine accordingly (e.g. quit Chrome for cold-start, disable remote
-  # debugging for remote-debugging-disabled).
+  # The runner label matches the target browser (chrome|chromium|edge) so a
+  # dedicated Chromium runner is never handed a chrome run.
+  # Steps are ISOLATED single files by design: the Node runner executes test
+  # files concurrently by default, and anything else touching the browser
+  # during the selected scenario would break the controlled prerequisite /
+  # dedicated-target / no-competing-endpoint assumptions. The ordinary suite
+  # stays in push CI; smoke and sentinel suites run only as explicitly
+  # selected follow-up steps, serially.
   browser-qualification:
     name: browser qualification — ${{ inputs.qualification-browser || 'chrome' }} / ${{ inputs.qualification-scenario || 'existing-browser' }}
-    runs-on: [self-hosted, chrome]
+    runs-on: [self-hosted, ${{ inputs.qualification-browser || 'chrome' }}]
     if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -105,10 +118,20 @@ jobs:
         with:
           enable-cache: true
       - run: npm ci
-      - name: Full suite including browser_exec-driven qualification
+      - name: Selected qualification scenario (isolated)
         env:
-          BROWSER_USE_BROWSER_TESTS: "1"
           BROWSER_USE_QUALIFICATION: "1"
           BROWSER_USE_QUALIFICATION_SCENARIO: ${{ inputs.qualification-scenario || 'existing-browser' }}
           BROWSER_USE_QUALIFICATION_BROWSER: ${{ inputs.qualification-browser || 'chrome' }}
-        run: node --test
+        run: node --test tests/browser/qualification.test.mjs
+      - name: Browser smoke (isolated, serial follow-up)
+        if: ${{ inputs.run-smoke == true }}
+        env:
+          BROWSER_USE_BROWSER_TESTS: "1"
+          BROWSER_USE_QUALIFICATION_BROWSER: ${{ inputs.qualification-browser || 'chrome' }}
+        run: node --test tests/browser/smoke.test.mjs
+      - name: Real sentinel paths (isolated, serial follow-up)
+        if: ${{ inputs.run-sentinel == true }}
+        env:
+          BROWSER_USE_BROWSER_TESTS: "1"
+        run: node --test tests/security/reference-host.test.mjs

@@ -9,6 +9,23 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Qualification job isolation + runner labels (2026-09-09, post-review)
+
+- P1: the manual qualification job no longer runs the whole suite. The
+  selected scenario runs as an isolated single file
+  (node --test tests/browser/qualification.test.mjs) — the Node runner's
+  default file concurrency would otherwise run smoke + reference-host
+  real-runtime suites against the same browser mid-scenario, breaking the
+  controlled-prerequisite / dedicated-target / no-competing-endpoint
+  assumptions. Browser smoke and real sentinel paths are separate,
+  explicitly selected serial follow-up steps (run-smoke / run-sentinel
+  workflow inputs); the ordinary suite stays in push CI / Gate 0.
+- P2: the self-hosted runner label now matches the target browser
+  (chrome|chromium|edge), so a dedicated Chromium runner is never handed
+  a chrome run.
+- Evidence checklist gains the browser-smoke dated-PASS item (Chrome +
+  Chromium) — the suite exists but had no recorded evidence entry.
+
 ### Qualification runner audit semantics + workflow browser selector (2026-09-09)
 
 - P1: a SELECTED scenario that goes INCONCLUSIVE mid-run now fails with a

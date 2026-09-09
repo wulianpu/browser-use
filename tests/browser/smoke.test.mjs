@@ -10,6 +10,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { assertAttachableTarget, hasExplicitTarget } from "../helpers/targetPreflight.mjs";
 import { RUNTIME_GATES, requireRuntimeOrSkip, startRuntime } from "../helpers/runtime.mjs";
 
 const MARKER = "bu-smoke-7331";
@@ -70,6 +71,12 @@ test("browser smoke: navigation, AX observation, input, screenshot (§81)", asyn
   if (!RUNTIME_GATES.browserTests) {
     t.skip("BROWSER_USE_BROWSER_TESTS=1 required — this test drives a real Chrome");
     return;
+  }
+  // When a target browser is explicitly named, prove the attachable browser
+  // IS that target before claiming any smoke evidence for it (a runner label
+  // is a scheduling constraint, not a runtime identity proof).
+  if (hasExplicitTarget()) {
+    await assertAttachableTarget(RUNTIME_GATES.qualificationBrowser, { requireRunning: true });
   }
 
   const fixture = await startFixture();

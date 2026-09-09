@@ -7,6 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createReferenceHostRuntime } from "../helpers/referenceHostRuntime.mjs";
+import { assertAttachableTarget, hasExplicitTarget } from "../helpers/targetPreflight.mjs";
 import { RUNTIME_GATES, requireRuntimeOrSkip, startRuntime } from "../helpers/runtime.mjs";
 
 const MiB = 1024 * 1024;
@@ -341,6 +342,12 @@ test("real runtime: textual failure classification holds against browser-use@0.1
   if (!RUNTIME_GATES.browserTests) {
     t.skip("BROWSER_USE_BROWSER_TESTS=1 required — browser_exec may start the harness daemon/Chrome");
     return;
+  }
+  // When a target browser is explicitly named (sentinel follow-up runs),
+  // prove the attachable browser IS that target so the evidence can carry
+  // the browser's name; otherwise this test is browser-agnostic by design.
+  if (hasExplicitTarget()) {
+    await assertAttachableTarget(RUNTIME_GATES.qualificationBrowser, { requireRunning: true });
   }
   const runtime = await startRuntime();
   const host = createReferenceHostRuntime({

@@ -9,6 +9,22 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Workflow YAML fix + follow-up target attribution (2026-09-09, post-review)
+
+- P0: the dynamic runner label broke YAML parsing (unquoted ${{ }} inside
+  a flow-style sequence — the push run created zero jobs). Now quoted:
+  runs-on: [self-hosted, "${{ inputs.qualification-browser || 'chrome' }}"].
+- P1: the smoke and real-sentinel follow-up suites now perform a
+  target-browser identity preflight when BROWSER_USE_QUALIFICATION_BROWSER
+  is explicitly set (new tests/helpers/targetPreflight.mjs): no competing
+  browser interference, target running, endpoint attributable by
+  listening-process ownership. A runner label is a scheduling constraint,
+  not a runtime identity proof — without this, a chromium-labeled run on
+  a machine where Chrome happened to be attachable could record the wrong
+  evidence. The sentinel workflow step now passes the browser target too.
+  Local/default runs stay browser-agnostic; the reference-host contract
+  itself is unchanged.
+
 ### Qualification job isolation + runner labels (2026-09-09, post-review)
 
 - P1: the manual qualification job no longer runs the whole suite. The

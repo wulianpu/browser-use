@@ -105,7 +105,7 @@ jobs:
   # selected follow-up steps, serially.
   browser-qualification:
     name: browser qualification — ${{ inputs.qualification-browser || 'chrome' }} / ${{ inputs.qualification-scenario || 'existing-browser' }}
-    runs-on: [self-hosted, ${{ inputs.qualification-browser || 'chrome' }}]
+    runs-on: [self-hosted, "${{ inputs.qualification-browser || 'chrome' }}"]
     if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -134,4 +134,5 @@ jobs:
         if: ${{ inputs.run-sentinel == true }}
         env:
           BROWSER_USE_BROWSER_TESTS: "1"
+          BROWSER_USE_QUALIFICATION_BROWSER: ${{ inputs.qualification-browser || 'chrome' }}
         run: node --test tests/security/reference-host.test.mjs

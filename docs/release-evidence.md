@@ -28,22 +28,24 @@ Scenario matrix and run log live in
 Microsoft Edge):
 
 - PASS — Windows 11 / Google Chrome (frozen-scope REQUIRED browser) —
-  **required-matrix scenarios complete on this machine**: existing-browser;
-  cold-start prerequisite-off (current-SHA re-proof; browser stays cold,
-  bounded actionable diagnostic) and prerequisite-on (instance-level
-  diagnostic contract); real OK/ERR sentinel paths;
-  remote-debugging-disabled (§84 flow-trigger evidence);
-  **browser smoke** (§81 full interaction suite, identity-preflighted).
+  full required matrix: existing-browser; cold-start OFF (current-SHA
+  re-proof) + ON; real OK/ERR sentinel paths (strict mode verified);
+  remote-debugging-disabled (§84 flow-trigger evidence); browser smoke.
+- PASS — Windows 11 / Chromium (frozen-scope REQUIRED browser) — full
+  required matrix in a dedicated environment (Chrome/Edge closed with
+  flags off): existing-browser; cold-start OFF + ON; real OK/ERR
+  sentinel paths (strict mode); browser smoke.
 - PASS — Windows 11 / Edge (ADDITIONAL qualified browser, owner-approved
-  2026-09-09): existing-browser; real OK/ERR sentinel paths; cold-start
-  prerequisite-on via the `chrome-not-running` diagnostic contract.
-  Launch-automation not observed on Windows for either browser.
-- PASS — Windows 11 (earlier, flag-off machine state): cold-start
-  prerequisite-off; real pre-exec failure classification.
-- REQUIRED (frozen V1 scope) and PENDING — Chromium matrix (needs a
-  Chromium install); macOS/Linux per claimed matrix (the launch-automation
-  path could only be qualified there).
+  2026-09-09): existing-browser; cold-start ON; real OK/ERR paths.
+  Launch-automation not observed on Windows for any browser.
+- PASS — Windows 11 (earlier, flag-off machine state): cold-start OFF;
+  real pre-exec failure classification.
+- REMAINING — macOS/Linux per the claimed platform matrix; GitHub
+  workflow_dispatch qualification runs (currently 0; all evidence is
+  local controlled runs with reproduction commands).
 - Evidence type: local controlled runs recorded above (with reproduction
+  commands and per-target browser identity); GitHub workflow_dispatch
+  qualification runs: 0. local controlled runs recorded above (with reproduction
   commands and per-target browser identity); GitHub workflow_dispatch
   qualification runs: 0.
 

@@ -9,6 +9,24 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Chromium required matrix PASS (2026-09-09)
+
+- Dedicated-environment qualification on Windows 11 (Chromium 152 via
+  winget/Hibbiki; Google Chrome and Edge closed with flags off to
+  sidestep the chrome.exe ambiguity): all five scenarios PASS —
+  cold-start OFF + ON (browser stays cold, instance-level diagnostics),
+  existing-browser (tab preservation after the interactive per-instance
+  approval), real OK/ERR sentinel paths (strict mode, live
+  process-attributed endpoint), browser smoke (18.4 s).
+- Operational notes recorded: force-killed Chrome left a stale
+  DevToolsActivePort that mis-attributed Chromium's live 9222 endpoint
+  to Google Chrome until cleaned (the documented chrome.exe limitation
+  biting in practice); Chrome's debugging flag was disabled via a
+  backed-up Local State edit for the dedicated environment.
+- Windows-11 Gate 1 coverage is now complete for both frozen-scope
+  browsers (Google Chrome + Chromium) plus the Edge additional
+  qualification. Remaining: macOS/Linux per claimed matrix.
+
 ### Sentinel strict mode for explicit targets (2026-09-09, post-review)
 
 - P1: with BROWSER_USE_QUALIFICATION_BROWSER explicitly set, the

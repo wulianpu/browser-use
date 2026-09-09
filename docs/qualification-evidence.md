@@ -8,11 +8,11 @@ tab contents are recorded here (§73).
 
 | Scenario | Windows 11 | macOS | Linux |
 | --- | --- | --- | --- |
-| existing-browser | **PASS 2026-09-09 — Microsoft Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
-| cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; **PASS 2026-09-09 — Chrome-targeted re-proof at current SHA** (browser stayed cold; daemon-failure tool text + instance-level enable-chrome://inspect diagnostic in the log) | — | — |
-| cold-start (prerequisite on) | **PASS 2026-09-09 — Edge via `chrome-not-running` diagnostic**; **PASS 2026-09-09 — Chrome via instance-level `remote debugging is turned off` diagnostic** (browser stays cold in both; launch-automation not observed on Windows) | — | — |
-| real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome** | — | — |
-| browser smoke (§81 full interaction suite) | **PASS 2026-09-09 — Google Chrome** (identity-preflighted) | — | — |
+| existing-browser | **PASS 2026-09-09 — Microsoft Edge**; **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** | — | — |
+| cold-start (prerequisite off) | **PASS 2026-09-08 (flag-off machine state)**; **PASS 2026-09-09 — Chrome-targeted re-proof at current SHA** (browser stayed cold; instance-level diagnostic in the log); **PASS 2026-09-09 — Chromium** | — | — |
+| cold-start (prerequisite on) | **PASS 2026-09-09 — Edge** (`chrome-not-running`); **PASS 2026-09-09 — Chrome** (instance-level diagnostic); **PASS 2026-09-09 — Chromium** (instance-level diagnostic) — browser stays cold in all; launch-automation not observed on Windows | — | — |
+| real OK / ERR sentinel paths | **PASS 2026-09-09 — Edge**; **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** (strict mode: live endpoint + genuine OK/ERR) | — | — |
+| browser smoke (§81 full interaction suite) | **PASS 2026-09-09 — Google Chrome**; **PASS 2026-09-09 — Chromium** (both identity-preflighted) | — | — |
 | remote-debugging-disabled | **PASS 2026-09-09 — Google Chrome** (flow-trigger evidence within the bounded window) | — | — |
 
 Scope note (2026-09-09): per the frozen V1 product scope, **Google Chrome +
@@ -181,6 +181,47 @@ remote-debugging-disabled.
   (activate-if-hidden + settle; use the harness `scroll()` helper with the
   observed POSITIVE-dy-scrolls-down convention).
 
+### 2026-09-09 — Chromium required matrix PASS (Windows 11, dedicated environment)
+
+Environment construction (per the dedicated-machine recommendation, to
+sidestep the chrome.exe name ambiguity between Google Chrome and Chromium):
+
+- Chromium 152.0.7977.83 installed via winget (Hibbiki build — runs as
+  chrome.exe with the standard %LOCALAPPDATA%ChromiumUser Data profile,
+  matching the probe); profile initialized once, then closed.
+- Google Chrome closed (graceful, then background processes) and its
+  remote-debugging flag set to off via a backed-up Local State edit
+  (Local State.bak-before-chromium-qual); a stale DevToolsActivePort left
+  by the force-kill was removed (ephemeral file, auto-recreated) — with both
+  browsers running as chrome.exe, the stale file mis-attributed Chromium's
+  live 9222 endpoint to Google Chrome until cleaned.
+- Edge flag stayed off. Interference vs chromium: null throughout.
+
+Results (all target-scoped, identity-guarded):
+
+- **cold-start prerequisite-OFF PASS**: dedicated env (all flags off,
+  nothing running) — browser stayed cold, instance-level enable-chrome://
+  inspect diagnostic.
+- **existing-browser PASS**: first attach entered the interactive approval
+  handshake (finding #6 in Chromium too — the initial run was stopped while
+  waiting for the human Allow click); after approval, attached Chromium,
+  preserved the seeded pre-existing tab, closed only the task tab.
+- **real OK/ERR sentinel paths PASS (strict mode)**: reference-host 15/15
+  with BROWSER_USE_QUALIFICATION_BROWSER=chromium — live process-attributed
+  endpoint required; genuine OK success and user-code-exception →
+  unknown-effects verified.
+- **browser smoke PASS**: navigation, filtered AX observation,
+  click/type/press with effect verification, scroll, screenshot, task-tab
+  cleanup (the test process lingered after the verdict; the TAP log shows
+  ok at 18.4 s and the run was stopped post-verdict — noted, not
+  evidence-affecting).
+- **cold-start prerequisite-ON PASS**: Chromium gracefully closed with the
+  flag on; browser stayed cold (0 processes before/after); instance-level
+  diagnostic in the daemon log.
+
+With this, the Windows-11 required matrix is complete for BOTH frozen-scope
+browsers (Google Chrome and Chromium) plus the Edge additional coverage.
+
 ## Behavioral findings for Hosts (from qualification)
 
 1. **`browser_exec` failures are ordinary text, not MCP errors** — the runtime
@@ -240,11 +281,7 @@ remote-debugging-disabled.
 - [x] **Microsoft Edge / Windows 11 additional qualification — PASS
       2026-09-09**: existing-browser; cold-start prerequisite-on
       (`chrome-not-running` diagnostic); real OK/ERR sentinel paths.
-- [ ] **Chromium required matrix** (frozen V1 scope): all five scenarios on a
-      Chromium install. A dedicated machine/profile is strongly recommended —
-      Chrome closed with its flag off, Edge closed with its flag off, only
-      Chromium participating — to sidestep the Windows chrome.exe name
-      ambiguity between Chrome and Chromium.
+- [x] **Chromium / Windows 11 required matrix — PASS 2026-09-09** (dedicated environment): existing-browser; cold-start OFF + ON; real OK/ERR sentinel paths (strict mode); browser smoke.
 - [ ] macOS qualification incl. the mac-approve product-diagnostics path (§63).
 - [ ] Linux, per the claimed platform matrix.
 - Note: the launch-automation cold-start path remains unqualified everywhere

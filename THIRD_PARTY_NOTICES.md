@@ -28,5 +28,5 @@ Notes:
   limited to portable frontmatter, host security policy, and V1 product scope.
 - The vendored Agent Plugins schemas under `tests/manifest/schemas/` are pristine copies of the
   published schema files, used for validation only.
-- Before publishing, re-verify each license against the actual pinned artifacts as part of the
-  upstream upgrade review (spec §72/§95).
+- Before each future release or upstream pin upgrade, re-verify each license against the
+  actual pinned artifacts (spec §72/§95).

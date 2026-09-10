@@ -7,6 +7,30 @@
   real-Host acceptance pointers.
 - Gate-2 auditable artifacts added: the 11/11 acceptance run log and a git bundle
   of agent-plugin-host @ f2f2ba7 (exact offline source reproduction).
+- README gains a short Getting Started section up top for first-time users
+  (platform scope, prerequisites, Host installation, browser preparation incl.
+  the interactive remote-debugging approval and the Windows no-auto-launch
+  note, tool verification, troubleshooting link) — the technical reference
+  below it is unchanged.
+- v1.0.0 GitHub Release supplemented (tag untouched): body now carries a
+  documentation-consistency note, and the Gate-2 evidence artifacts are
+  attached as release assets (acceptance TAP log + f2f2ba7 source bundle).
+  A future 1.0.1 documentation patch release may fold these into a
+  self-contained archive.
+- THIRD_PARTY_NOTICES re-verification cadence reworded for the released
+  project (before each future release or upstream pin upgrade).
+- README gains a short Getting Started section up top for first-time users
+  (platform scope, prerequisites, Host installation, browser preparation incl.
+  the interactive remote-debugging approval and the Windows no-auto-launch
+  note, tool verification, troubleshooting link) — the technical reference
+  below it is unchanged.
+- v1.0.0 GitHub Release supplemented (tag untouched): body now carries a
+  documentation-consistency note, and the Gate-2 evidence artifacts are
+  attached as release assets (acceptance TAP log + f2f2ba7 source bundle).
+  A future 1.0.1 documentation patch release may fold these into a
+  self-contained archive.
+- THIRD_PARTY_NOTICES re-verification cadence reworded for the released
+  project (before each future release or upstream pin upgrade).
 - Repaired a README checklist truncation introduced by the previous cleanup
   edit (a faulty slice removed everything after the Gate-0 item): restored the
   Browser-qualification, Real-Host, and §90–§96 review-gate entries as checked

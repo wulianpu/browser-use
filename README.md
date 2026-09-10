@@ -11,6 +11,28 @@ the official runtime and the usage guidance around it.
 > This plugin is **not** published by the Browser Use team. It is an independent adapter of the
 > official `.mcp.json` launch line (`uvx --python 3.12 browser-use@<pin> --cli-mcp`).
 
+## Getting Started
+
+This is an Agent Plugins v1 **package**, not a standalone app — an Agent Plugin Host loads it and
+exposes its tools to your agent.
+
+1. **Platform scope**: 1.0.0 is qualified on **Windows 11** with **Google Chrome / Chromium**
+   (Microsoft Edge additionally). macOS/Linux are post-1.0.0 targets, not yet qualified.
+2. **Prerequisites**: an Agent Plugins v1 Host; [`uv`/`uvx`](https://docs.astral.sh/uv/) on `PATH`;
+   a local Chrome or Chromium. The first runtime start resolves `browser-use@0.13.10` from the
+   package registry — network access required, and a slow first start is expected.
+3. **Install into your Host** following its plugin mechanism; this repository IS the plugin
+   (`plugin.json` + `mcp.json` + `skills/` — there is no build step).
+4. **Prepare the browser**: enable remote debugging via
+   `chrome://inspect/#remote-debugging` ("Allow remote debugging for this browser instance").
+   The first attach may show an interactive approval popup — click **Allow**. On Windows, if no
+   browser is running, start it yourself (the harness does not auto-launch).
+5. **Verify**: once your Host starts the MCP server you should see exactly two tools —
+   `browser_exec` (Python with Browser Harness helpers preloaded) and `browser_screenshot`.
+   A quick `print(page_info())` through `browser_exec` confirms the connection.
+6. Trouble connecting? See
+   [`skills/browser-use/references/troubleshooting.md`](skills/browser-use/references/troubleshooting.md).
+
 ## Architecture
 
 ```text

@@ -52,40 +52,44 @@ Microsoft Edge):
 
 - [x] All scenarios dated-PASS on the claimed platform matrix (Windows 11, per the 2026-09-10 owner scope decision). **GATE 1 CLOSED.**
 
-## Gate 2 — real-Host integration proof
+## Gate 2 — real-Host integration proof — CLOSED (2026-09-10)
 
-The reference contract (`tests/helpers/hostPolicy.mjs`,
-`tests/helpers/referenceHostRuntime.mjs`) must be implemented/reused in the
-actual Agent Plugin Host and the same contract acceptance verified there.
-No evidence exists in this repository yet.
+Host: **agent-plugin-host** — local repository at
+`C:/Users/WuLianpu/Workspace/ai/agent-plugin-host` (remote publication pending;
+SHA verifiable on this machine), commit `f2f2ba74ce575e7196876407aaa38f709267ea1e` —
+"Implement real Agent Plugin Host acceptance suite". Built with Codex
+(glm-5.3) against a frozen TASK.md spec that ports the reference contract
+(hostPolicy / referenceHostRuntime / mcpClient / runtime semantics); the plugin
+repository was referenced READ-ONLY and verified untouched after the build
+(git clean, in sync with origin/main).
 
-Required in the real Host:
+Acceptance run (2026-09-10): `node --test` in the host repository —
+**11/11 test files PASS, 0 failures, 0 skips**, independently re-executed by
+the plugin repo maintainer rather than relying on the builder's self-report:
 
-- [ ] `local.code-execution` authorization (exec denied without it)
-- [ ] environment sanitization (host secrets invisible to the subprocess)
-- [ ] input/output bounds (128 KiB source / 1 MiB wrapped / 1 MiB text / 16 MiB image)
-- [ ] single-flight (one logical browser task per runtime)
-- [ ] textual `browser_exec` failure classification (sentinel scheme or equivalent)
-- [ ] unknown-effects handling (user-code exception → inspect before retry)
-- [ ] timeout → poison → fresh-process recovery
-- [ ] task-boundary recycle (no cross-task namespace/state)
-- [ ] workspace sanitation (symlink-safe, credential-free retention)
-- [ ] Browser Harness daemon lifecycle (finding #8): with a stable
-      per-instance BH_HOME, sequential MCP task recycle does not
-      accumulate daemons — the next MCP process either reuses the healthy
-      daemon or replaces an unhealthy one deterministically; browser
-      state remains inspectable across the recycle; no cross-security-
-      context daemon reuse; plugin-instance teardown leaves no owned
-      orphan daemon. (Task boundary recycles the MCP process and the
-      Python namespace; the daemon itself MAY stay long-lived — it must
-      not fan out unboundedly.)
+- [x] `local.code-execution` authorization — tests/authorization.test.mjs
+- [x] environment sanitization — tests/env-sanitization.test.mjs
+- [x] input/output bounds (128 KiB source / 1 MiB wrapped / 1 MiB UTF-8-safe text / 16 MiB image) — tests/bounds.test.mjs
+- [x] single-flight — tests/single-flight.test.mjs
+- [x] textual `browser_exec` failure classification (dual-sentinel, shadowing-proof) — tests/textual-classification.test.mjs
+- [x] unknown-effects handling (user-code exception → inspect before retry; pre-exec → known-failed) — tests/unknown-effects.test.mjs
+- [x] timeout → poison → fresh-process recovery — tests/timeout-poison-recovery.test.mjs
+- [x] task-boundary recycle (fresh MCP per task, namespace isolation) — tests/task-recycle.test.mjs
+- [x] workspace sanitation (symlink-safe, credential-free retention, fail-closed) — tests/workspace-sanitation.test.mjs
+- [x] Browser Harness daemon lifecycle (finding #8) — tests/daemon-lifecycle.test.mjs,
+      REAL uvx runtime with a stable per-instance BH_HOME: each task receives a
+      fresh MCP process identity; sequential recycle does not accumulate daemons;
+      at most one daemon owns the BH_HOME; teardown via the scoped official
+      `--reload` leaves no owned orphan.
+- [x] bonus: integration-plugin-load.test.mjs — loads the REAL plugin (read-only),
+      spawns the real MCP server, passive initialize + tools/list contract,
+      graceful stop.
 
-Evidence format: host repository + commit SHA implementing the contract, the
-acceptance run log, and a pointer from this file.
-
+Backlink: this file is the release-side record; the host repository carries the
+implementation and its own README mapping the ten items.
 ## Release decision
 
 - [ ] Gate 0 re-run at final commit
 - [ ] Gate 1 PASS
-- [ ] Gate 2 PASS
+- [x] Gate 2 PASS (2026-09-10, agent-plugin-host @ f2f2ba7)
 - [ ] `v1.0.0` tagged; CHANGELOG `[Unreleased]` → `1.0.0 — <date>`

@@ -9,6 +9,19 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Gate 2 CLOSED: real-Host acceptance PASS (2026-09-10)
+
+- agent-plugin-host (local repo, commit f2f2ba7) — a real Agent Plugin
+  Host built with Codex (glm-5.3) from a frozen TASK.md spec that ports
+  the reference contract — passes all ten acceptance items plus a real
+  plugin-load integration test: 11/11 files, independently re-executed
+  by the maintainer. Daemon lifecycle verified on the REAL uvx runtime
+  with a stable BH_HOME (fresh MCP PID per task, no daemon accumulation,
+  scoped --reload teardown leaves none). The plugin repo was read-only
+  during the build and verified untouched. Remaining for release: the
+  Gate 0 four-command rerun at the final SHA, then CHANGELOG dating,
+  v1.0.0 tag, and the GitHub Release.
+
 ### Platform scope decision: 1.0.0 = Windows 11 (2026-09-10)
 
 - Owner decision: 1.0.0 officially claims Windows 11 only. Gate 1 closes

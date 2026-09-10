@@ -13,6 +13,10 @@ naming the commit SHA it was run against.
 | 2026-09-09 | `d5e9f3be12522b4972160df4abf5514081d24a53` | `npm test` (full default mode, one command: runtime tests real, browser-gated tests skip with reasons) | PASS — 15/15 test files |
 | 2026-09-09 | `d5e9f3be12522b4972160df4abf5514081d24a53` | `node scripts/verify-runtime-contract.mjs` | PASS — contract matches snapshot, runtime 0.13.10 |
 | 2026-09-09 | `d5e9f3be12522b4972160df4abf5514081d24a53` | `node scripts/verify-upstream.mjs` | PASS — lock matches live upstream |
+| 2026-09-10 | `12f4034fc0710c3bdd72e9a62285fc47ff013257` | `npm ci` | PASS (5 packages) |
+| 2026-09-10 | `12f4034fc0710c3bdd72e9a62285fc47ff013257` | `npm test` (full default mode) | PASS — 15/15 test files |
+| 2026-09-10 | `12f4034fc0710c3bdd72e9a62285fc47ff013257` | `node scripts/verify-runtime-contract.mjs` | PASS — contract matches snapshot, runtime 0.13.10 |
+| 2026-09-10 | `12f4034fc0710c3bdd72e9a62285fc47ff013257` | `node scripts/verify-upstream.mjs` | PASS — lock matches live upstream |
 
 Note: CI runs these as separate jobs (static with `BROWSER_USE_SKIP_RUNTIME=1`,
 plus the runtime-contract job); the table above records the single-shot full
@@ -89,7 +93,7 @@ Backlink: this file is the release-side record; the host repository carries the
 implementation and its own README mapping the ten items.
 ## Release decision
 
-- [ ] Gate 0 re-run at final commit
-- [ ] Gate 1 PASS
+- [x] Gate 0 re-run at final commit (2026-09-10 @ 12f4034; the release commit adds only release documentation on top)
+- [x] Gate 1 PASS (2026-09-10, Windows 11 scope — Chrome + Chromium required matrices, Edge additional)
 - [x] Gate 2 PASS (2026-09-10, agent-plugin-host @ f2f2ba7)
-- [ ] `v1.0.0` tagged; CHANGELOG `[Unreleased]` → `1.0.0 — <date>`
+- [x] `v1.0.0` tagged; CHANGELOG `[Unreleased]` → `1.0.0 — 2026-09-10`

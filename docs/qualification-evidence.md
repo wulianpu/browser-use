@@ -300,8 +300,9 @@ families, plus the Edge additional coverage.
       2026-09-09**: existing-browser; cold-start prerequisite-on
       (`chrome-not-running` diagnostic); real OK/ERR sentinel paths.
 - [x] **Chromium / Windows 11 required matrix — PASS 2026-09-09** (dedicated environment): existing-browser; cold-start OFF + ON; real OK/ERR sentinel paths (strict mode); browser smoke.
-- [ ] macOS qualification incl. the mac-approve product-diagnostics path (§63).
-- [ ] Linux, per the claimed platform matrix.
+- Post-1.0.0 target (not claimed by 1.0.0 — owner scope decision 2026-09-10):
+      macOS qualification incl. the mac-approve product-diagnostics path (§63).
+- Post-1.0.0 target (not claimed by 1.0.0): Linux qualification.
 - Note: the launch-automation cold-start path remains unqualified everywhere
       (never observed on Windows; only provable where a harness launch
       actually occurs).

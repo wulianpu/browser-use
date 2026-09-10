@@ -9,6 +9,17 @@ tagged. No GitHub Release exists yet.
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).
 
+### Platform scope decision: 1.0.0 = Windows 11 (2026-09-10)
+
+- Owner decision: 1.0.0 officially claims Windows 11 only. Gate 1 closes
+  on the existing evidence — Google Chrome + Chromium required matrices
+  (six scenario families each) and the Edge additional qualification,
+  all dated-PASS on Windows 11. macOS/Linux (incl. the mac-approve
+  product-diagnostics flow) are post-1.0.0 qualification targets,
+  explicitly NOT claimed by this release. Gate 2 (real-Host acceptance,
+  ten items) remains the main release blocker; Gate 0 rerun waits for
+  the final release SHA.
+
 ### Daemon lifecycle into Gate-2 contract; test-owned daemon cleanup (2026-09-09)
 
 - Correction (same day, post-review): the cleanup initially rebuilt env

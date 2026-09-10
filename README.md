@@ -35,12 +35,14 @@ Browser Harness → CDP → local Chrome / Chromium
 Runtime core is exactly three files: `plugin.json`, `mcp.json`, `skills/browser-use/SKILL.md`.
 `upstream.lock.json` is a provenance/development artifact — it does not define runtime semantics.
 
-**Browser scope:** Browser Use can drive local Chromium-family browsers (its discovery also covers
-Brave-class launchers). This thin adapter does not constrain that capability. Per the frozen V1
-product scope, the **required qualification matrix is Google Chrome + Chromium** on the target
-platforms (evidence pending — see [`docs/qualification-evidence.md`](docs/qualification-evidence.md));
-**Microsoft Edge is additionally qualified on Windows 11** (owner-approved addition, 2026-09-09).
-Other Chromium-family browsers are unqualified here.
+**Platform scope (owner decision 2026-09-10): 1.0.0 is a Windows 11 qualified release.** Browser
+Use can drive local Chromium-family browsers (its discovery also covers Brave-class launchers);
+this thin adapter does not constrain that capability. The **required qualification matrix — Google
+Chrome + Chromium, all six scenario families each — is fully PASS on Windows 11**
+([`docs/qualification-evidence.md`](docs/qualification-evidence.md)); **Microsoft Edge is
+additionally qualified on Windows 11** (owner-approved addition, 2026-09-09). macOS and Linux are
+**post-1.0.0 qualification targets, not claimed by this release**; other Chromium-family browsers
+are unqualified here.
 
 ## Ownership model (do not violate)
 
@@ -236,11 +238,10 @@ Before publishing `browser-use@1.0.0`:
       `node scripts/verify-upstream.mjs` all green at the final commit — record runs in
       [`docs/release-evidence.md`](docs/release-evidence.md) (CI runs these as separate jobs and
       never as a single full `npm test`).
-- [ ] Browser qualification matrix: every pending scenario in
-      [`docs/qualification-evidence.md`](docs/qualification-evidence.md) has a dated PASS on the
-      target Chrome/OS combinations (`existing-browser`, `cold-start` both branches,
-      `remote-debugging-disabled`, each on a prepared machine matching the scenario's
-      preconditions); macOS mac-approve flow qualified via product diagnostics.
+- [x] Browser qualification matrix — **PASS on Windows 11 (the 1.0.0 platform scope, owner
+      decision 2026-09-10)**: Google Chrome + Chromium required matrices complete across all six
+      scenario families; Microsoft Edge additional qualification. macOS/Linux (including the
+      macOS mac-approve product-diagnostics flow) are post-1.0.0 targets, not claimed by 1.0.0.
 - [ ] **Real-Host integration proof (P0):** the host-security contract demonstrated in the actual
       Agent Host, not only in this repo's reference tests — authorization (`local.code-execution`),
       environment sanitization, input/output bounds, single-flight, textual `browser_exec`

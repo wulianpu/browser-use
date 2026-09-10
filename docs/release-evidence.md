@@ -41,14 +41,16 @@ Microsoft Edge):
   Launch-automation not observed on Windows for any browser.
 - PASS — Windows 11 (earlier, flag-off machine state): cold-start OFF;
   real pre-exec failure classification.
-- REMAINING — macOS/Linux per the claimed platform matrix; GitHub
-  workflow_dispatch qualification runs (currently 0; all evidence is
-  local controlled runs with reproduction commands).
+- Platform scope DECISION (owner, 2026-09-10): **1.0.0 claims Windows 11 only.**
+  macOS/Linux qualification (incl. the macOS mac-approve product-diagnostics flow)
+  moves to post-1.0.0 targets and is not a Gate-1 blocker for this release.
+  GitHub workflow_dispatch qualification runs: 0 (all evidence above is local
+  controlled runs with reproduction commands — accepted as evidence).
 - Evidence type: local controlled runs recorded above (with reproduction
   commands and per-target browser identity); GitHub workflow_dispatch
   qualification runs: 0.
 
-- [ ] All scenarios dated-PASS on the claimed platform matrix.
+- [x] All scenarios dated-PASS on the claimed platform matrix (Windows 11, per the 2026-09-10 owner scope decision). **GATE 1 CLOSED.**
 
 ## Gate 2 — real-Host integration proof
 

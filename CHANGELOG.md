@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased] — post-1.0.0 documentation
+
+- README synced from pre-release to released state (v1.0.0 published 2026-09-10);
+  release checklist closed as a completed record with the Gate-0 rerun SHA and the
+  real-Host acceptance pointers.
+- Gate-2 auditable artifacts added: the 11/11 acceptance run log and a git bundle
+  of agent-plugin-host @ f2f2ba7 (exact offline source reproduction).
+
 ## 1.0.0 — 2026-09-10
 
 Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`).

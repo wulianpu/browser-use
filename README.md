@@ -213,44 +213,31 @@ dedicated ephemeral Chrome runner (it executes registry-resolved Python code and
 4. Run the full suite + browser qualification.
 5. Publish a **new plugin revision** (e.g. `1.1.0` → Browser Use `0.14.x`); never silently re-pin an existing revision.
 
-## Repository status: FROZEN (code-complete, pre-release)
+## Repository status: RELEASED — 1.0.0 (2026-09-10)
 
-The code has passed architecture/compliance/security/reliability review. Core
-implementation changes are accepted **only** for:
+**`v1.0.0` is tagged and published:** <https://github.com/wulianpu/browser-use/releases/tag/v1.0.0>.
+All three release gates passed (Gate 0 four-command rerun, Windows-11 browser
+qualification, real-Host acceptance) — auditable in
+[`docs/release-evidence.md`](docs/release-evidence.md). Post-release work (macOS/Linux
+qualification, upstream pin upgrades via the §72 flow, the next plugin revision) proceeds
+on top of the released line. For the 1.0.x line, core implementation changes are accepted
+**only** for:
 
 - browser qualification exposing real Browser Use behavior that contradicts current assumptions;
 - real-Host integration exposing a contract that cannot land as specified;
 - a Browser Use upstream pin upgrade (§72 flow);
 - a genuine P0/P1 security or reliability defect.
 
-Anything else — including further reference-wrapper edge cases — belongs after
-1.0.0. The two open release gates are tracked in
-[`docs/qualification-evidence.md`](docs/qualification-evidence.md) and in the
-checklist below.
+Anything else — including further reference-wrapper edge cases — belongs to a future
+revision. Post-1.0.0 qualification targets are tracked in
+[`docs/qualification-evidence.md`](docs/qualification-evidence.md).
 
-## Release checklist
-
-Before publishing `browser-use@1.0.0`:
+## Release checklist — 1.0.0 (complete; released 2026-09-10)
 
 - [x] Publisher/license decided: `author.name` = WuLianpu, `license` = MIT, `repository` = <https://github.com/wulianpu/browser-use>.
 - [x] Real JSON Schema validation in CI (ajv against the vendored official Agent Plugins 1.0.0 schemas).
-- [ ] `npm ci && npm test` (full default mode as one command), `node scripts/verify-runtime-contract.mjs`,
-      `node scripts/verify-upstream.mjs` all green at the final commit — record runs in
-      [`docs/release-evidence.md`](docs/release-evidence.md) (CI runs these as separate jobs and
-      never as a single full `npm test`).
-- [x] Browser qualification matrix — **PASS on Windows 11 (the 1.0.0 platform scope, owner
-      decision 2026-09-10)**: Google Chrome + Chromium required matrices complete across all six
-      scenario families; Microsoft Edge additional qualification. macOS/Linux (including the
-      macOS mac-approve product-diagnostics flow) are post-1.0.0 targets, not claimed by 1.0.0.
-- [ ] **Real-Host integration proof (P0):** the host-security contract demonstrated in the actual
-      Agent Host, not only in this repo's reference tests — authorization (`local.code-execution`),
-      environment sanitization, input/output bounds, single-flight, textual `browser_exec`
-      failure classification with **unknown-effects handling** (inspect before retry),
-      timeout→poison→fresh-process recovery, task-boundary recycle, and workspace-state sanitation
-      (symlink-safe, credential-free retention).
-- [ ] Review gates in the frozen spec (`Browser Use Agent Plugin.md` §90-§96) all checked.
+- [x] `npm ci && npm test` (full default mode as one command), `node scripts/verify-runtime-contract.mjs`,
+      `node scripts/verify-upstream.mjs` all green — rerun 2026-09-10 @ `12f4034` (rows in
+      [`docs/release-evidence.md`](docs/release-evidence.md); the release commit `1efb8a1` adds
+      only release documentation on top and is CI-green).
 
-## License
-
-MIT — see [LICENSE](LICENSE). Upstream runtime licenses: MIT (Browser Use,
-Browser Harness) — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

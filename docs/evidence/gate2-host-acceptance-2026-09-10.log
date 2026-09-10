@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\authorization.test.mjs
+ok 1 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\authorization.test.mjs
+  ---
+  duration_ms: 279.4758
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\bounds.test.mjs
+ok 2 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\bounds.test.mjs
+  ---
+  duration_ms: 250.2077
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\daemon-lifecycle.test.mjs
+ok 3 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\daemon-lifecycle.test.mjs
+  ---
+  duration_ms: 124673.2541
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\env-sanitization.test.mjs
+ok 4 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\env-sanitization.test.mjs
+  ---
+  duration_ms: 461.8041
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\integration-plugin-load.test.mjs
+ok 5 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\integration-plugin-load.test.mjs
+  ---
+  duration_ms: 3942.33
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\single-flight.test.mjs
+ok 6 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\single-flight.test.mjs
+  ---
+  duration_ms: 176.7506
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\task-recycle.test.mjs
+ok 7 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\task-recycle.test.mjs
+  ---
+  duration_ms: 247.6423
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\textual-classification.test.mjs
+ok 8 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\textual-classification.test.mjs
+  ---
+  duration_ms: 216.4937
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\timeout-poison-recovery.test.mjs
+ok 9 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\timeout-poison-recovery.test.mjs
+  ---
+  duration_ms: 401.1277
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\unknown-effects.test.mjs
+ok 10 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\unknown-effects.test.mjs
+  ---
+  duration_ms: 215.9403
+  ...
+# Subtest: C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\workspace-sanitation.test.mjs
+ok 11 - C:\\Users\\WuLianpu\\Workspace\\ai\\agent-plugin-host\\tests\\workspace-sanitation.test.mjs
+  ---
+  duration_ms: 338.8507
+  ...
+1..11
+# tests 11
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 124736.7268

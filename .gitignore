@@ -1,5 +1,6 @@
 node_modules/
 *.log
+!docs/evidence/*.log
 .tmp/
 .DS_Store
 Thumbs.db

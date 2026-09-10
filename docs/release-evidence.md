@@ -59,8 +59,8 @@ Microsoft Edge):
 ## Gate 2 — real-Host integration proof — CLOSED (2026-09-10)
 
 Host: **agent-plugin-host** — local repository at
-`C:/Users/WuLianpu/Workspace/ai/agent-plugin-host` (remote publication pending;
-SHA verifiable on this machine), commit `f2f2ba74ce575e7196876407aaa38f709267ea1e` —
+`C:/Users/WuLianpu/Workspace/ai/agent-plugin-host` (remote pending; SHA verifiable
+on this machine and via the source bundle below), commit `f2f2ba74ce575e7196876407aaa38f709267ea1e` —
 "Implement real Agent Plugin Host acceptance suite". Built with Codex
 (glm-5.3) against a frozen TASK.md spec that ports the reference contract
 (hostPolicy / referenceHostRuntime / mcpClient / runtime semantics); the plugin
@@ -88,6 +88,13 @@ the plugin repo maintainer rather than relying on the builder's self-report:
 - [x] bonus: integration-plugin-load.test.mjs — loads the REAL plugin (read-only),
       spawns the real MCP server, passive initialize + tools/list contract,
       graceful stop.
+
+Auditable artifacts (in this repository):
+- run log: `docs/evidence/gate2-host-acceptance-2026-09-10.log` (the 11/11 acceptance run,
+  independently re-executed 2026-09-10);
+- source: `docs/evidence/agent-plugin-host-f2f2ba7.bundle` (git bundle of the host
+  repository at `f2f2ba7` — `git clone agent-plugin-host-f2f2ba7.bundle` reproduces the
+  exact audited source).
 
 Backlink: this file is the release-side record; the host repository carries the
 implementation and its own README mapping the ten items.

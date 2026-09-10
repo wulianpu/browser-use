@@ -1,9 +1,8 @@
 # Release Evidence
 
-Auditable record for the `browser-use@1.0.0` release decision. The two open
-gates mirror the review verdict: browser qualification and real-Host
-integration. Checkbox semantics: an item closes only with a dated PASS entry
-naming the commit SHA it was run against.
+Auditable record for the completed `browser-use@1.0.0` release decision.
+All three release gates are closed below with their supporting evidence
+(dated PASS entries naming the commit SHA each run executed against).
 
 ## Gate 0 — suite and verification gates (record runs here)
 

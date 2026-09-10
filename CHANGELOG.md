@@ -7,6 +7,13 @@
   real-Host acceptance pointers.
 - Gate-2 auditable artifacts added: the 11/11 acceptance run log and a git bundle
   of agent-plugin-host @ f2f2ba7 (exact offline source reproduction).
+- Repaired a README checklist truncation introduced by the previous cleanup
+  edit (a faulty slice removed everything after the Gate-0 item): restored the
+  Browser-qualification, Real-Host, and §90–§96 review-gate entries as checked
+  with evidence pointers, and the closing License section. The §90–§96 item
+  honestly records that review evidence lives in CHANGELOG history rather
+  than a standalone artifact. release-evidence.md opening updated to the
+  completed-release wording (was: "two open gates").
 
 ## 1.0.0 — 2026-09-10
 

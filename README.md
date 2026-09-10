@@ -241,3 +241,27 @@ revision. Post-1.0.0 qualification targets are tracked in
       [`docs/release-evidence.md`](docs/release-evidence.md); the release commit `1efb8a1` adds
       only release documentation on top and is CI-green).
 
+- [x] Browser qualification matrix — **PASS on Windows 11 (the 1.0.0 platform scope, owner
+      decision 2026-09-10)**: Google Chrome + Chromium required matrices complete across all six
+      scenario families; Microsoft Edge additional qualification. macOS/Linux (including the
+      macOS mac-approve product-diagnostics flow) are post-1.0.0 targets, not claimed by 1.0.0.
+- [x] **Real-Host integration proof (P0): PASS 2026-09-10** — demonstrated in the actual
+      Agent Host (`agent-plugin-host` @ `f2f2ba7`): authorization (`local.code-execution`),
+      environment sanitization, input/output bounds, single-flight, textual `browser_exec`
+      failure classification with **unknown-effects handling** (inspect before retry),
+      timeout→poison→fresh-process recovery, task-boundary recycle, workspace-state sanitation
+      (symlink-safe, credential-free retention), and the Harness daemon lifecycle — 11/11
+      acceptance files, independently re-executed. Evidence:
+      [`docs/release-evidence.md`](docs/release-evidence.md) (Gate 2 section),
+      [`docs/evidence/gate2-host-acceptance-2026-09-10.log`](docs/evidence/gate2-host-acceptance-2026-09-10.log) (TAP run log),
+      [`docs/evidence/agent-plugin-host-f2f2ba7.bundle`](docs/evidence/agent-plugin-host-f2f2ba7.bundle) (exact audited source).
+- [x] Review gates in the frozen spec (`Browser Use Agent Plugin.md` §90-§96) — checked
+      iteratively during development: every review round's findings and their fixes are
+      recorded in [`CHANGELOG.md`](CHANGELOG.md) (hardening rounds R1–R14, qualification and
+      daemon-lifecycle corrections). No separate standalone review-record artifact exists;
+      the substance of each gate is evidenced by the per-gate evidence files above.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Upstream runtime licenses: MIT (Browser Use,
+Browser Harness) — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

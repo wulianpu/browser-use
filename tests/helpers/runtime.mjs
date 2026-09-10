@@ -95,7 +95,6 @@ export async function startRuntime({ pluginData, initTimeoutMs } = {}) {
   const server = mcpServerConfig();
   const ownsPluginData = !pluginData;
   const dataDir = pluginData ?? (await mkdtemp(join(tmpdir(), "browser-use-plugin-data-")));
-  const startedAt = Date.now();
   const env = buildRuntimeEnv(process.env, {
     pluginData: dataDir,
     pluginRoot: repoRoot,
@@ -113,77 +112,34 @@ export async function startRuntime({ pluginData, initTimeoutMs } = {}) {
   const { tools } = await client.listTools();
 
   async function stop() {
-    await client.stop();
+    const exit = await client.stop();
     if (ownsPluginData) {
-      await stopOwnedHarnessDaemon(server, dataDir, startedAt);
+      stopOwnedHarnessDaemon(server, env, cwd);
     }
+    return exit;
   }
 
   return { client, tools, pluginData: dataDir, cwd, ownsPluginData, stop };
 }
 
-// Stop the daemon bound to OUR temp BH_HOME — never a global daemon kill.
-// Primary: the official `browser-use --reload` scoped by the same env (its
-// stop lands asynchronously). Fallback: after a short grace window, kill by
-// PID ONLY harness-daemon processes created after this runtime started
-// (time-window scoping; daemons from other owners predate the window).
-function stopOwnedHarnessDaemon(server, dataDir, startedAtMs) {
-  const daemonEnv = {
-    ...process.env,
-    BH_HOME: `${dataDir}/browser-harness`,
-    BH_AGENT_WORKSPACE: `${dataDir}/agent-workspace`,
-  };
+// Stop the daemon bound to OUR temp BH_HOME. The ONLY ownership primitive is
+// the official `browser-use --reload` executed with the SAME sanitized env
+// and cwd the runtime was launched with (env identity = BH_HOME identity) —
+// its stop lands asynchronously. There is deliberately NO process-killing
+// fallback: creation-time windows prove nothing (a concurrent runtime's
+// daemon would match and be killed), and the BH_HOME spawnlock carries no
+// PID to verify against. Not killing is always safe; orphaning is a
+// diagnosable nuisance, a wrong kill is not.
+function stopOwnedHarnessDaemon(server, env, cwd) {
   try {
     spawnSync(server.command, [...server.args.slice(0, -1), "--reload"], {
-      env: daemonEnv,
+      env,
+      cwd,
       windowsHide: true,
       timeout: 120_000,
     });
   } catch {
-    /* best-effort official stop; the fallback below still applies */
-  }
-  const deadline = Date.now() + 12_000;
-  for (;;) {
-    const lingering = harnessDaemonsCreatedAfter(startedAtMs);
-    if (lingering.length === 0) return;
-    if (Date.now() > deadline) {
-      for (const pid of lingering) {
-        try {
-          process.kill(pid); // Windows: terminates; POSIX: SIGTERM
-        } catch {
-          /* already gone */
-        }
-      }
-      return;
-    }
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_500); // sleep 1.5s
-  }
-}
-
-// Harness-daemon PIDs created after the given timestamp (empty list on
-// probe failure — cleanup then simply does nothing extra).
-function harnessDaemonsCreatedAfter(startedAtMs) {
-  try {
-    if (process.platform === "win32") {
-      const out = spawnSync(
-        "powershell.exe",
-        ["-NoProfile", "-Command",
-          'Get-CimInstance Win32_Process | Where-Object { $_.Name -like "python*" -and $_.CommandLine -match "browser_harness.daemon" } | ForEach-Object { if ($_.CreationDate.ToFileTimeUtc() -gt ' + (startedAtMs + 11644473600000) * 10000 + ') { $_.ProcessId } }'],
-        { encoding: "utf8", windowsHide: true, timeout: 30_000 },
-      );
-      return (out.stdout ?? "").split(/\s+/).filter((t) => /^\d+$/.test(t)).map(Number);
-    }
-    const out = spawnSync("ps", ["-eo", "pid,lstart,command"], { encoding: "utf8", timeout: 15_000 });
-    const lines = (out.stdout ?? "").split("\n").filter((l) => /browser_harness\.daemon/.test(l));
-    const pids = [];
-    for (const line of lines) {
-      const m = line.match(/^\s*(\d+)\s+/);
-      if (!m) continue;
-      const created = new Date(line.slice(String(m[1]).length + 1, 30)).getTime();
-      if (Number.isFinite(created) && created >= startedAtMs) pids.push(Number(m[1]));
-    }
-    return pids;
-  } catch {
-    return [];
+    /* best-effort: --reload failure surfaces as an orphaned daemon, never as
+       damage to another owner's daemon */
   }
 }

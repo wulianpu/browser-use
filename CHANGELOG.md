@@ -11,6 +11,13 @@ Initial implementation of the frozen V1 baseline (`Browser Use Agent Plugin.md`)
 
 ### Daemon lifecycle into Gate-2 contract; test-owned daemon cleanup (2026-09-09)
 
+- Correction (same day, post-review): the cleanup initially rebuilt env
+  from process.env and carried a creation-time kill fallback — both
+  removed per review. --reload now runs with the exact sanitized env/cwd
+  from startRuntime; no process-killing fallback exists (creation time
+  proves no ownership); stop() returns the client exit result again.
+
+
 - Finding #8 promoted into the Real-Host acceptance contract as its tenth
   item, with precise V1 semantics: task boundary recycles the MCP process
   and Python namespace; the Harness daemon under the stable per-instance
